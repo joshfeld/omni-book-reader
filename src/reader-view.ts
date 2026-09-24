@@ -28,7 +28,6 @@ import {
   installFoliateBlobIframePatch,
 } from "./foliate-runtime-patches";
 import { installFoliateCustomElementGuard } from "./foliate-custom-element-guard";
-import { uiLocale, uiText } from "./i18n";
 import { extensionForBlob, safeFileName, saveBlobToVault, sourceToBlob } from "./media-utils";
 import { applyReflowableLayout, resolveViewportWidth } from "./reader-layout";
 import { ReaderUiState } from "./reader-ui-state";
@@ -61,7 +60,6 @@ import type {
   FoliateViewElement,
   HighlightColor,
   HighlightStyle,
-  InterfaceLanguage,
   ReaderHighlight,
   ReadingStats,
   ReaderSettings,
@@ -84,18 +82,18 @@ async function ensureFoliateViewModule(): Promise<void> {
   await foliateViewModulePromise;
 }
 
-const HIGHLIGHT_COLORS: Record<HighlightColor, { zh: string; en: string; value: string }> = {
-  yellow: { zh: "黄色高亮", en: "Yellow highlight", value: "#ffd54f" },
-  green: { zh: "绿色高亮", en: "Green highlight", value: "#81c784" },
-  blue: { zh: "蓝色高亮", en: "Blue highlight", value: "#64b5f6" },
-  pink: { zh: "粉色高亮", en: "Pink highlight", value: "#f48fb1" },
+const HIGHLIGHT_COLORS: Record<HighlightColor, { label: string; value: string }> = {
+  yellow: { label: "Yellow highlight", value: "#ffd54f" },
+  green: { label: "Green highlight", value: "#81c784" },
+  blue: { label: "Blue highlight", value: "#64b5f6" },
+  pink: { label: "Pink highlight", value: "#f48fb1" },
 };
 
-const HIGHLIGHT_STYLES: Record<HighlightStyle, { zh: string; en: string; icon: string }> = {
-  highlight: { zh: "高亮", en: "Highlight", icon: "highlighter" },
-  underline: { zh: "下划线", en: "Underline", icon: "underline" },
-  strikethrough: { zh: "删除线", en: "Strikethrough", icon: "strikethrough" },
-  squiggly: { zh: "波浪线", en: "Squiggly underline", icon: "waves" },
+const HIGHLIGHT_STYLES: Record<HighlightStyle, { label: string; icon: string }> = {
+  highlight: { label: "Highlight", icon: "highlighter" },
+  underline: { label: "Underline", icon: "underline" },
+  strikethrough: { label: "Strikethrough", icon: "strikethrough" },
+  squiggly: { label: "Squiggly underline", icon: "waves" },
 };
 
 type SidebarTab = "toc" | "search" | "bookmarks" | "highlights";
@@ -120,7 +118,7 @@ interface HighlightEdit {
 
 function parseTags(value: string): string[] {
   return Array.from(new Set(value
-    .split(/[,，\n]/)
+    .split(/[,\n]/)
     .map((tag) => tag.replace(/\s+/g, " ").trim().slice(0, 50))
     .filter(Boolean)))
     .slice(0, 20);
@@ -164,14 +162,14 @@ function percentage(value: number): string {
   return `${Math.round(Math.min(1, Math.max(0, value)) * 100)}%`;
 }
 
-function duration(value: number, language: InterfaceLanguage): string {
+function duration(value: number): string {
   const minutes = Math.max(0, Math.round(value / 60000));
-  if (minutes < 60) return uiText(language, `${minutes} 分钟`, `${minutes} min`);
+  if (minutes < 60) return `${minutes} min`;
   const hours = Math.floor(minutes / 60);
   const remainder = minutes % 60;
   return remainder
-    ? uiText(language, `${hours} 小时 ${remainder} 分钟`, `${hours} hr ${remainder} min`)
-    : uiText(language, `${hours} 小时`, `${hours} hr`);
+    ? `${hours} hr ${remainder} min`
+    : `${hours} hr`;
 }
 
 class ReadingStatsModal extends Modal {
@@ -179,7 +177,6 @@ class ReadingStatsModal extends Modal {
     app: ReaderPluginHost["app"],
     private readonly stats: ReadingStats,
     private readonly sessionMs: number,
-    private readonly language: InterfaceLanguage,
     private readonly onToggleComplete: () => void,
   ) {
     super(app);
@@ -187,29 +184,28 @@ class ReadingStatsModal extends Modal {
 
   onOpen(): void {
     this.modalEl.addClass("omni-book-reader-stats-modal");
-    const t = (zh: string, en: string): string => uiText(this.language, zh, en);
-    this.titleEl.setText(t("阅读统计", "Reading statistics"));
+    this.titleEl.setText("Reading statistics");
     const grid = this.contentEl.createDiv({ cls: "omni-book-reader-stats-grid" });
     const fraction = this.stats.furthestFraction;
     const estimated = fraction >= 0.02
       ? this.stats.totalReadingMs / fraction * (1 - fraction)
       : 0;
     for (const [label, value] of [
-      [t("本次阅读", "This session"), duration(this.sessionMs, this.language)],
-      [t("累计阅读", "Total reading"), duration(this.stats.totalReadingMs, this.language)],
-      [t("阅读进度", "Reading progress"), percentage(fraction)],
-      [t("预计剩余", "Estimated remaining"), estimated ? duration(estimated, this.language) : t("数据不足", "Not enough data")],
-      [t("完成状态", "Completion status"), this.stats.completedAt
-        ? t(`已完成 · ${new Date(this.stats.completedAt).toLocaleDateString(uiLocale(this.language))}`, `Finished · ${new Date(this.stats.completedAt).toLocaleDateString(uiLocale(this.language))}`)
-        : t("阅读中", "Reading")],
+      ["This session", duration(this.sessionMs)],
+      ["Total reading", duration(this.stats.totalReadingMs)],
+      ["Reading progress", percentage(fraction)],
+      ["Estimated remaining", estimated ? duration(estimated) : "Not enough data"],
+      ["Completion status", this.stats.completedAt
+        ? `Finished · ${new Date(this.stats.completedAt).toLocaleDateString("en-US")}`
+        : "Reading"],
     ]) {
       const item = grid.createDiv({ cls: "omni-book-reader-stat-item" });
       item.createDiv({ cls: "omni-book-reader-stat-label", text: label });
       item.createDiv({ cls: "omni-book-reader-stat-value", text: value });
     }
     const actions = this.contentEl.createDiv({ cls: "omni-book-reader-modal-actions" });
-    const close = actions.createEl("button", { text: t("关闭", "Close") });
-    const complete = actions.createEl("button", { cls: "mod-cta", text: this.stats.completedAt ? t("标记为未完成", "Mark as unfinished") : t("标记为已完成", "Mark as finished") });
+    const close = actions.createEl("button", { text: "Close" });
+    const complete = actions.createEl("button", { cls: "mod-cta", text: this.stats.completedAt ? "Mark as unfinished" : "Mark as finished" });
     close.addEventListener("click", () => this.close());
     complete.addEventListener("click", () => {
       this.onToggleComplete();
@@ -222,7 +218,6 @@ class HighlightActionsModal extends Modal {
   constructor(
     app: ReaderPluginHost["app"],
     private readonly highlight: ReaderHighlight,
-    private readonly language: InterfaceLanguage,
     private readonly onSave: (edit: HighlightEdit) => Promise<void>,
     private readonly onDelete: () => Promise<void>,
   ) {
@@ -231,46 +226,45 @@ class HighlightActionsModal extends Modal {
 
   onOpen(): void {
     this.modalEl.addClass("omni-book-reader-highlight-modal");
-    const t = (zh: string, en: string): string => uiText(this.language, zh, en);
-    this.titleEl.setText(t("编辑标注", "Edit annotation"));
+    this.titleEl.setText("Edit annotation");
     this.contentEl.createDiv({ cls: "omni-book-reader-highlight-quote", text: this.highlight.text });
     this.contentEl.createDiv({ cls: "omni-book-reader-highlight-chapter", text: this.highlight.chapter });
-    const label = this.contentEl.createEl("label", { cls: "omni-book-reader-note-label", text: t("笔记", "Note") });
+    const label = this.contentEl.createEl("label", { cls: "omni-book-reader-note-label", text: "Note" });
     const textarea = label.createEl("textarea", {
       cls: "omni-book-reader-note-input",
       attr: {
-        placeholder: t("写下对这段高亮的想法…", "Write your thoughts about this highlight…"),
+        placeholder: "Write your thoughts about this highlight…",
         maxlength: "20000",
         rows: "7",
-        "aria-label": t("高亮笔记", "Highlight note"),
+        "aria-label": "Highlight note",
       },
     });
     textarea.value = this.highlight.note ?? "";
     const options = this.contentEl.createDiv({ cls: "omni-book-reader-annotation-options" });
-    const colorLabel = options.createEl("label", { text: t("颜色", "Color") });
-    const colorSelect = colorLabel.createEl("select", { attr: { "aria-label": t("标注颜色", "Annotation color") } });
+    const colorLabel = options.createEl("label", { text: "Color" });
+    const colorSelect = colorLabel.createEl("select", { attr: { "aria-label": "Annotation color" } });
     for (const [color, definition] of Object.entries(HIGHLIGHT_COLORS) as Array<[HighlightColor, typeof HIGHLIGHT_COLORS[HighlightColor]]>) {
-      colorSelect.createEl("option", { text: uiText(this.language, definition.zh, definition.en), value: color });
+      colorSelect.createEl("option", { text: definition.label, value: color });
     }
     colorSelect.value = this.highlight.color;
-    const styleLabel = options.createEl("label", { text: t("样式", "Style") });
-    const styleSelect = styleLabel.createEl("select", { attr: { "aria-label": t("标注样式", "Annotation style") } });
+    const styleLabel = options.createEl("label", { text: "Style" });
+    const styleSelect = styleLabel.createEl("select", { attr: { "aria-label": "Annotation style" } });
     for (const [style, definition] of Object.entries(HIGHLIGHT_STYLES) as Array<[HighlightStyle, typeof HIGHLIGHT_STYLES[HighlightStyle]]>) {
-      styleSelect.createEl("option", { text: uiText(this.language, definition.zh, definition.en), value: style });
+      styleSelect.createEl("option", { text: definition.label, value: style });
     }
     styleSelect.value = this.highlight.style;
-    const tagsLabel = this.contentEl.createEl("label", { cls: "omni-book-reader-note-label", text: t("标签", "Tags") });
+    const tagsLabel = this.contentEl.createEl("label", { cls: "omni-book-reader-note-label", text: "Tags" });
     const tagsInput = tagsLabel.createEl("input", {
       cls: "omni-book-reader-tags-input",
       type: "text",
-      attr: { placeholder: t("心理学, 原型, 待读", "psychology, archetype, read later"), "aria-label": t("标注标签", "Annotation tags") },
+      attr: { placeholder: "Tags, separated by commas", "aria-label": "Annotation tags" },
     });
     tagsInput.value = this.highlight.tags.join(", ");
-    this.contentEl.createDiv({ cls: "omni-book-reader-note-hint", text: t("清空并保存可移除笔记；高亮原文仍会保留。", "Clear and save to remove the note; the highlight remains.") });
+    this.contentEl.createDiv({ cls: "omni-book-reader-note-hint", text: "Clear and save to remove the note; the highlight remains." });
     const actions = this.contentEl.createDiv({ cls: "omni-book-reader-modal-actions" });
-    const cancel = actions.createEl("button", { text: t("关闭", "Close") });
-    const remove = actions.createEl("button", { cls: "mod-warning", text: t("删除高亮", "Delete highlight") });
-    const save = actions.createEl("button", { cls: "mod-cta", text: t("保存笔记", "Save note") });
+    const cancel = actions.createEl("button", { text: "Close" });
+    const remove = actions.createEl("button", { cls: "mod-warning", text: "Delete highlight" });
+    const save = actions.createEl("button", { cls: "mod-cta", text: "Save note" });
     cancel.addEventListener("click", () => this.close());
     remove.addEventListener("click", () => {
       void this.runAction([cancel, remove, save], async () => this.onDelete());
@@ -297,7 +291,7 @@ class HighlightActionsModal extends Modal {
       this.close();
     } catch (error) {
       console.error("[Omni Book Reader] Highlight action failed", error);
-      new Notice(error instanceof Error ? error.message : uiText(this.language, "保存高亮笔记失败", "Could not save the highlight note"));
+      new Notice(error instanceof Error ? error.message : "Could not save the highlight note");
       for (const button of buttons) button.disabled = false;
     }
   }
@@ -308,7 +302,6 @@ class FootnotePreviewModal extends Modal {
     app: ReaderPluginHost["app"],
     private readonly preview: FoliateViewElement,
     private readonly href: string,
-    private readonly language: InterfaceLanguage,
     private readonly onNavigate: (href: string) => Promise<void>,
   ) {
     super(app);
@@ -316,13 +309,12 @@ class FootnotePreviewModal extends Modal {
 
   onOpen(): void {
     this.modalEl.addClass("omni-book-reader-footnote-modal");
-    const t = (zh: string, en: string): string => uiText(this.language, zh, en);
-    this.titleEl.setText(t("脚注预览", "Footnote preview"));
+    this.titleEl.setText("Footnote preview");
     const host = this.contentEl.createDiv({ cls: "omni-book-reader-footnote-preview" });
     host.appendChild(this.preview);
     const actions = this.contentEl.createDiv({ cls: "omni-book-reader-modal-actions" });
-    const close = actions.createEl("button", { text: t("关闭", "Close") });
-    const navigate = actions.createEl("button", { cls: "mod-cta", text: t("跳转到正文位置", "Go to text") });
+    const close = actions.createEl("button", { text: "Close" });
+    const navigate = actions.createEl("button", { cls: "mod-cta", text: "Go to text" });
     close.addEventListener("click", () => this.close());
     navigate.addEventListener("click", () => {
       void this.onNavigate(this.href).then(() => this.close());
@@ -343,7 +335,6 @@ class ImagePreviewModal extends Modal {
     app: ReaderPluginHost["app"],
     private readonly source: string,
     private readonly alt: string,
-    private readonly language: InterfaceLanguage,
     private readonly onSave: (blob: Blob) => Promise<string>,
   ) {
     super(app);
@@ -351,13 +342,12 @@ class ImagePreviewModal extends Modal {
 
   onOpen(): void {
     this.modalEl.addClass("omni-book-reader-image-modal");
-    const t = (zh: string, en: string): string => uiText(this.language, zh, en);
-    this.titleEl.setText(this.alt || t("书内图片", "Book image"));
+    this.titleEl.setText(this.alt || "Book image");
     const viewport = this.contentEl.createDiv({ cls: "omni-book-reader-image-preview" });
-    const image = viewport.createEl("img", { attr: { src: this.source, alt: this.alt || t("书内图片", "Book image") } });
+    const image = viewport.createEl("img", { attr: { src: this.source, alt: this.alt || "Book image" } });
     const controls = this.contentEl.createDiv({ cls: "omni-book-reader-image-controls" });
-    controls.createSpan({ text: t("缩放", "Zoom") });
-    const zoom = controls.createEl("input", { type: "range", attr: { min: "50", max: "400", value: "100", step: "10", "aria-label": t("图片缩放", "Image zoom") } });
+    controls.createSpan({ text: "Zoom" });
+    const zoom = controls.createEl("input", { type: "range", attr: { min: "50", max: "400", value: "100", step: "10", "aria-label": "Image zoom" } });
     const zoomText = controls.createSpan({ text: "100%" });
     zoom.addEventListener("input", () => {
       const value = Number(zoom.value);
@@ -365,12 +355,12 @@ class ImagePreviewModal extends Modal {
       zoomText.setText(`${value}%`);
     });
     const actions = this.contentEl.createDiv({ cls: "omni-book-reader-modal-actions" });
-    const close = actions.createEl("button", { text: t("关闭", "Close") });
-    const save = actions.createEl("button", { cls: "mod-cta", text: t("保存到 Vault", "Save to Vault") });
+    const close = actions.createEl("button", { text: "Close" });
+    const save = actions.createEl("button", { cls: "mod-cta", text: "Save to vault" });
     close.addEventListener("click", () => this.close());
     save.addEventListener("click", () => void this.run(save, async () => {
       const path = await this.onSave(await this.getBlob());
-      new Notice(t(`图片已保存：${path}`, `Image saved: ${path}`));
+      new Notice(`Image saved: ${path}`);
     }));
   }
 
@@ -386,24 +376,23 @@ class ImagePreviewModal extends Modal {
   private async run(button: HTMLButtonElement, action: () => Promise<void>): Promise<void> {
     button.disabled = true;
     try { await action(); }
-    catch (error) { new Notice(error instanceof Error ? error.message : uiText(this.language, "图片操作失败", "Image operation failed")); }
+    catch (error) { new Notice(error instanceof Error ? error.message : "Image operation failed"); }
     finally { button.disabled = false; }
   }
 }
 
 class ReaderTutorialModal extends Modal {
-  constructor(app: ReaderPluginHost["app"], private readonly language: InterfaceLanguage) { super(app); }
+  constructor(app: ReaderPluginHost["app"]) { super(app); }
 
   onOpen(): void {
     this.modalEl.addClass("omni-book-reader-tutorial-modal");
-    const t = (zh: string, en: string): string => uiText(this.language, zh, en);
-    this.titleEl.setText(t("开始舒适阅读", "Start comfortable reading"));
+    this.titleEl.setText("Start comfortable reading");
     const steps = this.contentEl.createDiv({ cls: "omni-book-reader-tutorial" });
     const tutorialSteps: Array<[string, string, string]> = [
-      ["library", t("从书架继续", "Continue from the shelf"), t("继续阅读卡片会带你回到最近位置。", "The continue card returns to your latest position.")],
-      ["list-tree", t("侧栏组织一切", "Everything in one sidebar"), t("目录、搜索、标注和书签会记住你的标签页。", "Contents, search, annotations, and bookmarks remember your tab.")],
-      ["mouse-pointer-2", t("选择即可标注", "Select to annotate"), t("新选区与已有标注使用不同工具。", "New selections and saved annotations use separate tools.")],
-      ["sliders-horizontal", t("快速排版与跳页", "Appearance and page jump"), t("顶部打开排版，底部页码可直接跳转。", "Open appearance at the top and jump from the page control below.")],
+      ["library", "Continue from the shelf", "The continue card returns to your latest position."],
+      ["list-tree", "Everything in one sidebar", "Contents, search, annotations, and bookmarks remember your tab."],
+      ["mouse-pointer-2", "Select to annotate", "New selections and saved annotations use separate tools."],
+      ["sliders-horizontal", "Appearance and page jump", "Open appearance at the top and jump from the page control below."],
     ];
     for (const [icon, title, detail] of tutorialSteps) {
       const card = steps.createDiv({ cls: "omni-book-reader-tutorial-step" });
@@ -414,7 +403,7 @@ class ReaderTutorialModal extends Modal {
       text.createDiv({ cls: "omni-book-reader-tutorial-detail", text: detail });
     }
     const actions = this.contentEl.createDiv({ cls: "omni-book-reader-modal-actions" });
-    actions.createEl("button", { cls: "mod-cta", text: t("开始阅读", "Start reading") }).addEventListener("click", () => this.close());
+    actions.createEl("button", { cls: "mod-cta", text: "Start reading" }).addEventListener("click", () => this.close());
   }
 }
 
@@ -591,31 +580,23 @@ export class OmniBookReaderView extends FileView {
     }
   }
 
-  refreshLanguage(): void {
-    const file = this.file;
-    void this.cleanupReader().then(async () => {
-      this.buildShell();
-      if (file) await this.loadBook(file);
-    });
-  }
-
   toggleSidebar(): void {
     this.setSidebarOpen(!this.sidebarOpen);
   }
 
   openTutorial(): void {
-    new ReaderTutorialModal(this.app, this.language()).open();
+    new ReaderTutorialModal(this.app).open();
   }
 
   toggleBookmark(): void {
     if (!this.bookState || !this.currentLocation.cfi) {
-      new Notice(this.text("当前还没有可保存的阅读位置", "There is no reading position to bookmark yet"));
+      new Notice("There is no reading position to bookmark yet");
       return;
     }
     const index = this.bookState.bookmarks.findIndex((item) => item.cfi === this.currentLocation.cfi);
     if (index >= 0) {
       this.bookState.bookmarks.splice(index, 1);
-      new Notice(this.text("已移除当前位置书签", "Bookmark removed"));
+      new Notice("Bookmark removed");
     } else {
       this.bookState.bookmarks.unshift({
         id: createId("bookmark"),
@@ -624,7 +605,7 @@ export class OmniBookReaderView extends FileView {
         chapter: this.currentChapter(),
         createdAt: Date.now(),
       });
-      new Notice(this.text("已添加书签", "Bookmark added"));
+      new Notice("Bookmark added");
     }
     this.plugin.store.markChanged(0);
     this.renderBookmarks();
@@ -633,43 +614,42 @@ export class OmniBookReaderView extends FileView {
 
   async exportAnnotations(kind: AnnotationExportKind): Promise<void> {
     if (!this.bookState || !this.file) {
-      new Notice(this.text("请先打开一本 EPUB", "Open an EPUB first"));
+      new Notice("Open an EPUB first");
       return;
     }
     const highlights = this.bookState.highlights;
     if (kind === "highlights" && !highlights.length) {
-      new Notice(this.text("当前书籍还没有可导出的高亮摘抄", "This book has no highlights to export"));
+      new Notice("This book has no highlights to export");
       return;
     }
     if (kind === "notes" && !highlights.some((highlight) => Boolean(highlight.note?.trim()))) {
-      new Notice(this.text("当前书籍还没有可导出的笔记", "This book has no notes to export"));
+      new Notice("This book has no notes to export");
       return;
     }
     if (!await this.syncAnnotationDocuments()) return;
     const documents = this.bookState.annotationDocuments;
     const path = kind === "highlights" ? documents?.highlightPath : documents?.notePath;
     if (!path) {
-      new Notice(this.text("没有找到导出文档路径", "Could not find the export document path"));
+      new Notice("Could not find the export document path");
       return;
     }
     this.openAnnotationDocument(path);
-    new Notice(kind === "highlights" ? this.text("高亮摘抄已导出", "Highlights exported") : this.text("笔记已导出", "Notes exported"));
+    new Notice(kind === "highlights" ? "Highlights exported" : "Notes exported");
   }
 
   async navigateToCfi(cfi: string): Promise<void> {
     if (!this.reader || !isValidCfi(cfi)) {
-      new Notice(this.text("无法打开该 EPUB 标注位置", "Could not open this EPUB annotation location"));
+      new Notice("Could not open this EPUB annotation location");
       return;
     }
     if (!this.reader.resolveNavigation(cfi)) {
-      new Notice(this.text("该 CFI 位置已经失效", "This CFI location is no longer valid"));
+      new Notice("This CFI location is no longer valid");
       return;
     }
     await this.reader.select(cfi);
   }
 
   private buildShell(): void {
-    const t = (zh: string, en: string): string => this.text(zh, en);
     this.activeTab = this.plugin.getReaderSettings().lastSidebarTab;
     this.contentEl.empty();
     this.contentEl.addClass("omni-book-reader-view-content");
@@ -677,27 +657,27 @@ export class OmniBookReaderView extends FileView {
     this.rootEl = root;
 
     const header = root.createDiv({ cls: "omni-book-reader-header" });
-    const sidebarToggle = iconButton(header, "panel-left", t("切换阅读侧栏", "Toggle reader sidebar"));
+    const sidebarToggle = iconButton(header, "panel-left", "Toggle reader sidebar");
     sidebarToggle.addEventListener("click", () => this.toggleSidebar());
     const headings = header.createDiv({ cls: "omni-book-reader-headings" });
     this.titleEl = headings.createDiv({ cls: "omni-book-reader-title", text: "Omni Book Reader" });
-    this.chapterEl = headings.createDiv({ cls: "omni-book-reader-chapter", text: t("准备打开书籍", "Preparing book") });
+    this.chapterEl = headings.createDiv({ cls: "omni-book-reader-chapter", text: "Preparing book" });
     const headerActions = header.createDiv({ cls: "omni-book-reader-header-actions" });
-    const search = iconButton(headerActions, "search", t("搜索当前书籍", "Search this book"));
+    const search = iconButton(headerActions, "search", "Search this book");
     search.addEventListener("click", () => {
       this.setSidebarOpen(true);
       window.setTimeout(() => this.searchInputEl?.focus(), 0);
     });
-    this.bookmarkButton = iconButton(headerActions, "bookmark", t("添加或移除当前位置书签", "Add or remove bookmark here"));
+    this.bookmarkButton = iconButton(headerActions, "bookmark", "Add or remove bookmark here");
     this.bookmarkButton.addEventListener("click", () => this.toggleBookmark());
-    this.quickSettingsButton = iconButton(headerActions, "sliders-horizontal", t("阅读排版", "Reading appearance"));
+    this.quickSettingsButton = iconButton(headerActions, "sliders-horizontal", "Reading appearance");
     this.quickSettingsButton.setAttribute("aria-expanded", "false");
     this.quickSettingsButton.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
       this.toggleQuickSettings();
     });
-    const more = iconButton(headerActions, "ellipsis", t("更多阅读操作", "More reader actions"));
+    const more = iconButton(headerActions, "ellipsis", "More reader actions");
     more.addEventListener("click", (event) => this.openMoreMenu(event));
     this.quickSettingsEl = this.buildQuickSettings(root);
 
@@ -708,18 +688,18 @@ export class OmniBookReaderView extends FileView {
 
     const readingArea = body.createDiv({ cls: "omni-book-reader-reading-area" });
     this.readingAreaEl = readingArea;
-    const previous = iconButton(readingArea, "chevron-left", t("上一页", "Previous page"));
+    const previous = iconButton(readingArea, "chevron-left", "Previous page");
     previous.addClass("omni-book-reader-page-button", "is-previous");
     previous.addEventListener("click", () => this.queuePageTurn("previous"));
     this.viewerEl = readingArea.createDiv({ cls: "omni-book-reader-viewer" });
-    this.showLoading(t("正在准备书籍…", "Preparing book…"), 0.04);
-    const next = iconButton(readingArea, "chevron-right", t("下一页", "Next page"));
+    this.showLoading("Preparing book…", 0.04);
+    const next = iconButton(readingArea, "chevron-right", "Next page");
     next.addClass("omni-book-reader-page-button", "is-next");
     next.addEventListener("click", () => this.queuePageTurn("next"));
 
     const immersiveExit = readingArea.createEl("button", {
       cls: "omni-book-reader-immersive-exit",
-      attr: { type: "button", "aria-label": t("退出沉浸式阅读", "Exit immersive reading"), title: t("退出沉浸式阅读", "Exit immersive reading") },
+      attr: { type: "button", "aria-label": "Exit immersive reading", title: "Exit immersive reading" },
     });
     setIcon(immersiveExit, "arrow-left");
     immersiveExit.addEventListener("click", (event) => {
@@ -727,18 +707,18 @@ export class OmniBookReaderView extends FileView {
       event.stopPropagation();
       void this.toggleFocusMode(false);
     });
-    const immersiveFooter = readingArea.createDiv({ cls: "omni-book-reader-immersive-footer", attr: { "aria-label": t("当前阅读位置", "Current reading position") } });
-    this.immersiveLocationEl = immersiveFooter.createSpan({ text: t("正在定位", "Locating") });
+    const immersiveFooter = readingArea.createDiv({ cls: "omni-book-reader-immersive-footer", attr: { "aria-label": "Current reading position" } });
+    this.immersiveLocationEl = immersiveFooter.createSpan({ text: "Locating" });
 
-    const footer = root.createDiv({ cls: "omni-book-reader-footer", attr: { "aria-label": t("阅读导航", "Reading navigation") } });
-    const footerPrevious = iconButton(footer, "chevron-left", t("上一页", "Previous page"));
+    const footer = root.createDiv({ cls: "omni-book-reader-footer", attr: { "aria-label": "Reading navigation" } });
+    const footerPrevious = iconButton(footer, "chevron-left", "Previous page");
     footerPrevious.addClass("omni-book-reader-bottom-nav-button");
     footerPrevious.addEventListener("click", () => this.queuePageTurn("previous"));
     this.progressTextEl = footer.createSpan({ cls: "omni-book-reader-progress-text", text: "0%" });
     this.progressEl = footer.createEl("input", {
       cls: "omni-book-reader-progress",
       type: "range",
-      attr: { min: "0", max: "1", step: "0.001", value: "0", "aria-label": t("阅读进度", "Reading progress") },
+      attr: { min: "0", max: "1", step: "0.001", value: "0", "aria-label": "Reading progress" },
     });
     this.progressEl.addEventListener("input", () => {
       if (this.progressEl && this.progressTextEl) this.progressTextEl.setText(percentage(Number(this.progressEl.value)));
@@ -747,23 +727,23 @@ export class OmniBookReaderView extends FileView {
       const value = Number(this.progressEl?.value ?? 0);
       void this.reader?.goToFraction(value);
     });
-    this.locationTextEl = footer.createSpan({ cls: "omni-book-reader-location", text: t("尚未定位", "Not located") });
-    this.pageButtonEl = footer.createEl("button", { cls: "omni-book-reader-page-jump-button", text: t("跳页", "Go to"), attr: { type: "button", "aria-haspopup": "dialog", "aria-expanded": "false" } });
+    this.locationTextEl = footer.createSpan({ cls: "omni-book-reader-location", text: "Not located" });
+    this.pageButtonEl = footer.createEl("button", { cls: "omni-book-reader-page-jump-button", text: "Go to", attr: { type: "button", "aria-haspopup": "dialog", "aria-expanded": "false" } });
     this.pageButtonEl.addEventListener("click", () => this.togglePageJump());
-    const footerNext = iconButton(footer, "chevron-right", t("下一页", "Next page"));
+    const footerNext = iconButton(footer, "chevron-right", "Next page");
     footerNext.addClass("omni-book-reader-bottom-nav-button");
     footerNext.addEventListener("click", () => this.queuePageTurn("next"));
-    this.readingStatsEl = footer.createSpan({ cls: "omni-book-reader-reading-stats", text: t("本次 0 分钟", "This session 0 min") });
+    this.readingStatsEl = footer.createSpan({ cls: "omni-book-reader-reading-stats", text: "This session 0 min" });
     this.pageJumpEl = this.buildPageJump(root);
     this.localStatusEl = root.createDiv({ cls: "omni-book-reader-local-status", attr: { role: "status", "aria-live": "polite" } });
 
     this.selectionToolbarEl = root.createDiv({ cls: "omni-book-reader-selection-toolbar" });
     this.selectionToolbarEl.setAttribute("role", "toolbar");
-    this.selectionToolbarEl.setAttribute("aria-label", t("标注样式和颜色", "Annotation style and color"));
+    this.selectionToolbarEl.setAttribute("aria-label", "Annotation style and color");
     this.selectedHighlightStyle = this.plugin.getReaderSettings().defaultHighlightStyle;
     const styleButtons = new Map<HighlightStyle, HTMLButtonElement>();
     for (const [style, definition] of Object.entries(HIGHLIGHT_STYLES) as Array<[HighlightStyle, typeof HIGHLIGHT_STYLES[HighlightStyle]]>) {
-      const button = iconButton(this.selectionToolbarEl, definition.icon, this.definitionLabel(definition));
+      const button = iconButton(this.selectionToolbarEl, definition.icon, definition.label);
       button.addClass("omni-book-reader-style-button");
       button.toggleClass("is-active", style === this.selectedHighlightStyle);
       button.addEventListener("click", () => {
@@ -776,22 +756,22 @@ export class OmniBookReaderView extends FileView {
     for (const [color, definition] of Object.entries(HIGHLIGHT_COLORS) as Array<[HighlightColor, typeof HIGHLIGHT_COLORS[HighlightColor]]>) {
       const button = this.selectionToolbarEl.createEl("button", {
         cls: `omni-book-reader-color-button is-${color}`,
-        attr: { type: "button", "aria-label": this.definitionLabel(definition), title: this.definitionLabel(definition) },
+        attr: { type: "button", "aria-label": definition.label, title: definition.label },
       });
       button.addEventListener("click", () => void this.commitHighlight(color, this.selectedHighlightStyle));
     }
-    const quickHighlight = iconButton(this.selectionToolbarEl, "highlighter", t("使用默认样式高亮", "Highlight with defaults"));
+    const quickHighlight = iconButton(this.selectionToolbarEl, "highlighter", "Highlight with defaults");
     quickHighlight.addClass("omni-book-reader-selection-primary");
     quickHighlight.addEventListener("click", () => void this.commitHighlight(this.plugin.getReaderSettings().defaultHighlightColor, this.selectedHighlightStyle));
-    const copySelection = iconButton(this.selectionToolbarEl, "copy", t("复制选中文字", "Copy selected text"));
+    const copySelection = iconButton(this.selectionToolbarEl, "copy", "Copy selected text");
     copySelection.addEventListener("click", () => void navigator.clipboard.writeText(this.pendingSelection?.text ?? ""));
-    const addNote = iconButton(this.selectionToolbarEl, "notebook-pen", t("高亮并添加笔记", "Highlight and add note"));
+    const addNote = iconButton(this.selectionToolbarEl, "notebook-pen", "Highlight and add note");
     addNote.addEventListener("click", () => void this.commitHighlight(this.plugin.getReaderSettings().defaultHighlightColor, this.selectedHighlightStyle).then((highlight) => {
       if (highlight) this.openHighlightActions(highlight);
     }));
-    const selectionMore = iconButton(this.selectionToolbarEl, "ellipsis", t("更多选区操作", "More selection actions"));
+    const selectionMore = iconButton(this.selectionToolbarEl, "ellipsis", "More selection actions");
     selectionMore.addEventListener("click", (event) => this.openSelectionMenu(event));
-    const cancelSelection = iconButton(this.selectionToolbarEl, "x", t("取消高亮", "Cancel highlight"));
+    const cancelSelection = iconButton(this.selectionToolbarEl, "x", "Cancel highlight");
     cancelSelection.addEventListener("click", () => this.clearPendingSelection());
 
     root.addEventListener("keydown", (event) => this.handleKeydown(event));
@@ -816,18 +796,17 @@ export class OmniBookReaderView extends FileView {
   }
 
   private buildQuickSettings(parent: HTMLElement): HTMLElement {
-    const t = (zh: string, en: string): string => this.text(zh, en);
-    const panel = parent.createDiv({ cls: "omni-book-reader-quick-settings", attr: { "aria-label": t("阅读排版", "Reading appearance"), role: "dialog" } });
+    const panel = parent.createDiv({ cls: "omni-book-reader-quick-settings", attr: { "aria-label": "Reading appearance", role: "dialog" } });
     const header = panel.createDiv({ cls: "omni-book-reader-quick-settings-header" });
-    header.createDiv({ cls: "omni-book-reader-quick-settings-title", text: t("阅读排版", "Reading appearance") });
-    const close = iconButton(header, "x", t("关闭阅读排版", "Close reading appearance"));
+    header.createDiv({ cls: "omni-book-reader-quick-settings-title", text: "Reading appearance" });
+    const close = iconButton(header, "x", "Close reading appearance");
     close.addEventListener("click", () => this.toggleQuickSettings(false));
 
-    const presets = panel.createDiv({ cls: "omni-book-reader-appearance-presets", attr: { role: "group", "aria-label": t("排版预设", "Typography presets") } });
+    const presets = panel.createDiv({ cls: "omni-book-reader-appearance-presets", attr: { role: "group", "aria-label": "Typography presets" } });
     for (const [preset, label, patch] of [
-      ["comfortable", t("舒适", "Comfort"), { fontSizePercent: 100, lineHeight: 1.7, letterSpacing: 0.01, paragraphSpacing: 0.65, pageMargin: 48 }],
-      ["compact", t("紧凑", "Compact"), { fontSizePercent: 95, lineHeight: 1.5, letterSpacing: 0, paragraphSpacing: 0.35, pageMargin: 32 }],
-      ["large", t("大字", "Large"), { fontSizePercent: 125, lineHeight: 1.85, letterSpacing: 0.02, paragraphSpacing: 0.75, pageMargin: 40 }],
+      ["comfortable", "Comfort", { fontSizePercent: 100, lineHeight: 1.7, letterSpacing: 0.01, paragraphSpacing: 0.65, pageMargin: 48 }],
+      ["compact", "Compact", { fontSizePercent: 95, lineHeight: 1.5, letterSpacing: 0, paragraphSpacing: 0.35, pageMargin: 32 }],
+      ["large", "Large", { fontSizePercent: 125, lineHeight: 1.85, letterSpacing: 0.02, paragraphSpacing: 0.75, pageMargin: 40 }],
     ] as const) {
       const button = presets.createEl("button", { text: label, attr: { type: "button" } });
       button.toggleClass("is-active", this.plugin.getReaderSettings().readingPreset === preset);
@@ -863,14 +842,14 @@ export class OmniBookReaderView extends FileView {
       });
     };
     const get = (): ReaderSettings => this.plugin.getReaderSettings();
-    addRange(t("字号", "Font size"), 80, 180, 5, () => get().fontSizePercent, (value) => `${value}%`, (fontSizePercent) => this.plugin.updateReaderSettings({ fontSizePercent }));
-    addRange(t("行高", "Line height"), 1.2, 2.2, 0.05, () => get().lineHeight, (value) => value.toFixed(2), (lineHeight) => this.plugin.updateReaderSettings({ lineHeight }));
-    addRange(t("字距", "Letter spacing"), -0.02, 0.12, 0.01, () => get().letterSpacing, (value) => `${value >= 0 ? "+" : ""}${value.toFixed(2)}`, (letterSpacing) => this.plugin.updateReaderSettings({ letterSpacing }));
-    addRange(t("段落间距", "Paragraph spacing"), 0, 1.2, 0.05, () => get().paragraphSpacing, (value) => value.toFixed(2), (paragraphSpacing) => this.plugin.updateReaderSettings({ paragraphSpacing }));
-    addRange(t("页边距", "Page margin"), 0, 80, 4, () => get().pageMargin, (value) => String(value), (pageMargin) => this.plugin.updateReaderSettings({ pageMargin }));
-    const layout = panel.createDiv({ cls: "omni-book-reader-quick-segments", attr: { role: "group", "aria-label": t("阅读布局", "Reading layout") } });
-    layout.createSpan({ text: t("布局", "Layout") });
-    for (const [value, label] of [["paginated", t("翻页", "Pages")], ["scrolled", t("滚动", "Scroll")]] as const) {
+    addRange("Font size", 80, 180, 5, () => get().fontSizePercent, (value) => `${value}%`, (fontSizePercent) => this.plugin.updateReaderSettings({ fontSizePercent }));
+    addRange("Line height", 1.2, 2.2, 0.05, () => get().lineHeight, (value) => value.toFixed(2), (lineHeight) => this.plugin.updateReaderSettings({ lineHeight }));
+    addRange("Letter spacing", -0.02, 0.12, 0.01, () => get().letterSpacing, (value) => `${value >= 0 ? "+" : ""}${value.toFixed(2)}`, (letterSpacing) => this.plugin.updateReaderSettings({ letterSpacing }));
+    addRange("Paragraph spacing", 0, 1.2, 0.05, () => get().paragraphSpacing, (value) => value.toFixed(2), (paragraphSpacing) => this.plugin.updateReaderSettings({ paragraphSpacing }));
+    addRange("Page margin", 0, 80, 4, () => get().pageMargin, (value) => String(value), (pageMargin) => this.plugin.updateReaderSettings({ pageMargin }));
+    const layout = panel.createDiv({ cls: "omni-book-reader-quick-segments", attr: { role: "group", "aria-label": "Reading layout" } });
+    layout.createSpan({ text: "Layout" });
+    for (const [value, label] of [["paginated", "Pages"], ["scrolled", "Scroll"]] as const) {
       const button = layout.createEl("button", { text: label, attr: { type: "button" } });
       button.toggleClass("is-active", get().layout === value);
       button.disabled = this.fixedLayout;
@@ -880,9 +859,9 @@ export class OmniBookReaderView extends FileView {
       });
     }
 
-    const width = panel.createDiv({ cls: "omni-book-reader-quick-segments is-width-mode", attr: { role: "group", "aria-label": t("页面宽度", "Page width") } });
-    width.createSpan({ text: t("页面宽度", "Page width") });
-    for (const [value, label] of [["standard", t("标准", "Standard")], ["wide", t("宽版", "Wide")], ["full", t("全宽", "Full")], ["edge", t("贴边", "Edge")]] as const) {
+    const width = panel.createDiv({ cls: "omni-book-reader-quick-segments is-width-mode", attr: { role: "group", "aria-label": "Page width" } });
+    width.createSpan({ text: "Page width" });
+    for (const [value, label] of [["standard", "Standard"], ["wide", "Wide"], ["full", "Full"], ["edge", "Edge"]] as const) {
       const button = width.createEl("button", { text: label, attr: { type: "button" } });
       button.toggleClass("is-active", get().widthMode === value);
       button.disabled = this.fixedLayout;
@@ -893,9 +872,9 @@ export class OmniBookReaderView extends FileView {
     }
 
     const actions = panel.createDiv({ cls: "omni-book-reader-quick-settings-actions" });
-    const full = actions.createEl("button", { text: t("完整设置", "Full settings"), attr: { type: "button" } });
+    const full = actions.createEl("button", { text: "Full settings", attr: { type: "button" } });
     full.addEventListener("click", () => new ReaderSettingsModal(this.app, this.plugin, this.fixedLayout).open());
-    const reset = actions.createEl("button", { text: t("恢复默认", "Restore defaults"), attr: { type: "button" } });
+    const reset = actions.createEl("button", { text: "Restore defaults", attr: { type: "button" } });
     reset.addEventListener("click", () => {
       this.plugin.updateReaderSettings({
         font: "obsidian",
@@ -936,37 +915,34 @@ export class OmniBookReaderView extends FileView {
   }
 
   private openMoreMenu(event: MouseEvent): void {
-    const t = (zh: string, en: string): string => this.text(zh, en);
     const menu = new Menu();
-    menu.addItem((item) => item.setTitle(t("导出当前章节", "Export current chapter")).setIcon("file-down").onClick(() => void this.exportCurrentChapter()));
-    menu.addItem((item) => item.setTitle(t("阅读统计", "Reading statistics")).setIcon("chart-no-axes-column-increasing").onClick(() => this.openReadingStats()));
-    menu.addItem((item) => item.setTitle(this.focusMode ? t("退出沉浸阅读", "Exit immersive reading") : t("沉浸阅读", "Immersive reading")).setIcon("maximize").onClick(() => void this.toggleFocusMode()));
-    menu.addItem((item) => item.setTitle(t("完整阅读设置", "Full reader settings")).setIcon("settings").onClick(() => new ReaderSettingsModal(this.app, this.plugin, this.fixedLayout).open()));
+    menu.addItem((item) => item.setTitle("Export current chapter").setIcon("file-down").onClick(() => void this.exportCurrentChapter()));
+    menu.addItem((item) => item.setTitle("Reading statistics").setIcon("chart-no-axes-column-increasing").onClick(() => this.openReadingStats()));
+    menu.addItem((item) => item.setTitle(this.focusMode ? "Exit immersive reading" : "Immersive reading").setIcon("maximize").onClick(() => void this.toggleFocusMode()));
+    menu.addItem((item) => item.setTitle("Full reader settings").setIcon("settings").onClick(() => new ReaderSettingsModal(this.app, this.plugin, this.fixedLayout).open()));
     menu.showAtMouseEvent(event);
   }
 
   private openSelectionMenu(event: MouseEvent): void {
     const pending = this.pendingSelection;
     if (!pending) return;
-    const t = (zh: string, en: string): string => this.text(zh, en);
     const menu = new Menu();
-    menu.addItem((item) => item.setTitle(t("复制原文链接", "Copy source link")).setIcon("link").onClick(() => {
+    menu.addItem((item) => item.setTitle("Copy source link").setIcon("link").onClick(() => {
       const vault = encodeURIComponent(this.app.vault.getName());
       const path = encodeURIComponent(this.file?.path ?? "");
       const cfi = encodeURIComponent(pending.cfi);
       void navigator.clipboard.writeText(`obsidian://omni-book-reader?sourceVault=${vault}&path=${path}&cfi=${cfi}`);
     }));
-    menu.addItem((item) => item.setTitle(t("网页搜索", "Search the web")).setIcon("search").onClick(() => window.open(`https://www.google.com/search?q=${encodeURIComponent(pending.text)}`)));
-    menu.addItem((item) => item.setTitle(t("翻译选中文字", "Translate selection")).setIcon("languages").onClick(() => window.open(`https://translate.google.com/?sl=auto&tl=auto&text=${encodeURIComponent(pending.text)}&op=translate`)));
+    menu.addItem((item) => item.setTitle("Search the web").setIcon("search").onClick(() => window.open(`https://www.google.com/search?q=${encodeURIComponent(pending.text)}`)));
+    menu.addItem((item) => item.setTitle("Translate selection").setIcon("languages").onClick(() => window.open(`https://translate.google.com/?sl=auto&tl=auto&text=${encodeURIComponent(pending.text)}&op=translate`)));
     menu.showAtMouseEvent(event);
   }
 
   private buildPageJump(parent: HTMLElement): HTMLElement {
-    const t = (zh: string, en: string): string => this.text(zh, en);
-    const popover = parent.createDiv({ cls: "omni-book-reader-page-jump", attr: { role: "dialog", "aria-label": t("跳转阅读位置", "Go to reading position") } });
-    popover.createDiv({ cls: "omni-book-reader-page-jump-title", text: t("跳转阅读位置", "Go to reading position") });
-    const input = popover.createEl("input", { type: "number", attr: { min: "1", step: "1", "aria-label": t("位置编号", "Location number") } });
-    const submit = popover.createEl("button", { cls: "mod-cta", text: t("跳转", "Go"), attr: { type: "button" } });
+    const popover = parent.createDiv({ cls: "omni-book-reader-page-jump", attr: { role: "dialog", "aria-label": "Go to reading position" } });
+    popover.createDiv({ cls: "omni-book-reader-page-jump-title", text: "Go to reading position" });
+    const input = popover.createEl("input", { type: "number", attr: { min: "1", step: "1", "aria-label": "Location number" } });
+    const submit = popover.createEl("button", { cls: "mod-cta", text: "Go", attr: { type: "button" } });
     const go = (): void => {
       const total = this.currentLocation.location?.total ?? 0;
       const requested = Math.round(Number(input.value));
@@ -1025,8 +1001,7 @@ export class OmniBookReaderView extends FileView {
   }
 
   private buildSidebar(parent: HTMLElement): HTMLElement {
-    const t = (zh: string, en: string): string => this.text(zh, en);
-    const sidebar = parent.createEl("aside", { cls: "omni-book-reader-sidebar", attr: { "aria-label": t("Omni Book Reader 阅读侧栏", "Omni Book Reader reader sidebar") } });
+    const sidebar = parent.createEl("aside", { cls: "omni-book-reader-sidebar", attr: { "aria-label": "Omni Book Reader reader sidebar" } });
     const bookHeader = sidebar.createDiv({ cls: "omni-book-reader-sidebar-book" });
     const cover = bookHeader.createDiv({ cls: "omni-book-reader-sidebar-cover" });
     this.sidebarCoverEl = cover;
@@ -1034,12 +1009,12 @@ export class OmniBookReaderView extends FileView {
     this.sidebarCoverMarkEl = cover.createSpan({ text: "O" });
     const identity = bookHeader.createDiv({ cls: "omni-book-reader-sidebar-identity" });
     this.sidebarBookTitleEl = identity.createDiv({ cls: "omni-book-reader-sidebar-book-title", text: "Omni Book Reader" });
-    this.sidebarBookAuthorEl = identity.createDiv({ cls: "omni-book-reader-sidebar-book-author", text: t("正在载入书籍信息…", "Loading book information…") });
+    this.sidebarBookAuthorEl = identity.createDiv({ cls: "omni-book-reader-sidebar-book-author", text: "Loading book information…" });
     const progressRow = identity.createDiv({ cls: "omni-book-reader-sidebar-progress-row" });
     this.sidebarProgressEl = progressRow.createEl("input", {
       cls: "omni-book-reader-sidebar-progress",
       type: "range",
-      attr: { min: "0", max: "1", step: "0.001", value: "0", "aria-label": t("跳转阅读进度", "Jump to reading progress") },
+      attr: { min: "0", max: "1", step: "0.001", value: "0", "aria-label": "Jump to reading progress" },
     });
     this.sidebarProgressTextEl = progressRow.createSpan({ cls: "omni-book-reader-sidebar-progress-text", text: "0%" });
     this.sidebarProgressEl.addEventListener("input", () => {
@@ -1054,7 +1029,7 @@ export class OmniBookReaderView extends FileView {
     setIcon(searchIcon, "search");
     this.searchInputEl = searchBox.createEl("input", {
       type: "search",
-      attr: { placeholder: t("搜索正文…", "Search text…"), "aria-label": t("搜索当前书籍正文", "Search this book") },
+      attr: { placeholder: "Search text…", "aria-label": "Search this book" },
     });
     this.searchInputEl.addEventListener("input", () => {
       this.activateTab(this.searchInputEl?.value.trim() ? "search" : "toc");
@@ -1063,9 +1038,9 @@ export class OmniBookReaderView extends FileView {
 
     const tabs = sidebar.createDiv({ cls: "omni-book-reader-tabs", attr: { role: "tablist" } });
     const definitions: Array<[SidebarTab, string, string]> = [
-      ["toc", "list-tree", t("目录", "Contents")],
-      ["highlights", "highlighter", t("摘录", "Annotations")],
-      ["bookmarks", "bookmark", t("书签", "Bookmarks")],
+      ["toc", "list-tree", "Contents"],
+      ["highlights", "highlighter", "Annotations"],
+      ["bookmarks", "bookmark", "Bookmarks"],
     ];
     for (const [tab, icon, label] of definitions) {
       const button = iconButton(tabs, icon, label);
@@ -1077,14 +1052,14 @@ export class OmniBookReaderView extends FileView {
       button.addEventListener("click", () => this.activateTab(tab));
       this.tabButtons.set(tab, button);
     }
-    const closeSidebar = iconButton(tabs, "panel-left-close", t("隐藏侧栏", "Hide sidebar"));
+    const closeSidebar = iconButton(tabs, "panel-left-close", "Hide sidebar");
     closeSidebar.addClass("omni-book-reader-sidebar-close");
     closeSidebar.addEventListener("click", () => this.setSidebarOpen(false));
 
     const panels = sidebar.createDiv({ cls: "omni-book-reader-panels" });
     this.tocPanelEl = this.createPanel(panels, "toc");
     const searchPanel = this.createPanel(panels, "search");
-    this.searchStatusEl = searchPanel.createDiv({ cls: "omni-book-reader-search-status", text: t("输入关键词开始搜索", "Enter a keyword to search") });
+    this.searchStatusEl = searchPanel.createDiv({ cls: "omni-book-reader-search-status", text: "Enter a keyword to search" });
     this.searchResultsEl = searchPanel.createDiv({ cls: "omni-book-reader-search-results" });
     this.bookmarkPanelEl = this.createPanel(panels, "bookmarks");
     this.highlightPanelEl = this.createPanel(panels, "highlights");
@@ -1106,9 +1081,9 @@ export class OmniBookReaderView extends FileView {
     await this.cleanupReader(false);
     if (generation !== this.loadGeneration || !this.viewerEl) return;
     this.showLoading(
-      this.text("正在读取 EPUB…", "Reading EPUB…"),
+      "Reading EPUB…",
       0.1,
-      this.text("正在从 Obsidian 文库读取文件", "Reading the file from the Obsidian vault"),
+      "Reading the file from the Obsidian vault",
     );
 
     try {
@@ -1123,9 +1098,9 @@ export class OmniBookReaderView extends FileView {
       const timeout = bookLoadTimeout(file.stat.size);
       for (const [candidateIndex, binary] of binaries.entries()) {
         this.showLoading(
-          this.text("正在检查书籍结构…", "Checking book structure…"),
+          "Checking book structure…",
           0.28,
-          this.text(`读取路径 ${candidateIndex + 1}/${binaries.length}`, `Read path ${candidateIndex + 1} of ${binaries.length}`),
+          `Read path ${candidateIndex + 1} of ${binaries.length}`,
         );
         const source = new File([binary], file.name, {
           type: "application/epub+zip",
@@ -1141,19 +1116,19 @@ export class OmniBookReaderView extends FileView {
             const ratio = total > 0 ? Math.min(1, loaded / total) : 0;
             this.showLoading(
               phase === "archive"
-                ? this.text("正在解包 EPUB…", "Unpacking EPUB…")
-                : this.text("正在解析书籍信息…", "Parsing book metadata…"),
+                ? "Unpacking EPUB…"
+                : "Parsing book metadata…",
               phase === "archive" ? 0.3 + ratio * 0.24 : 0.56 + ratio * 0.08,
               phase === "archive" && total > 0
-                ? this.text(`已检查 ${loaded}/${total} 个资源`, `Checked ${loaded} of ${total} resources`)
-                : this.text("正在读取目录与章节", "Reading the table of contents and chapters"),
+                ? `Checked ${loaded} of ${total} resources`
+                : "Reading the table of contents and chapters",
             );
           }), timeout, () => {
             if (generation === this.loadGeneration) {
               this.showLoading(
-                this.text("这本书需要更长时间…", "This book is taking longer…"),
+                "This book is taking longer…",
                 0.52,
-                this.text("仍在安全解析，请保持此页面打开", "Still parsing safely; keep this view open"),
+                "Still parsing safely; keep this view open",
               );
             }
           });
@@ -1163,17 +1138,17 @@ export class OmniBookReaderView extends FileView {
             return;
           }
           this.showLoading(
-            this.text("正在创建阅读页面…", "Creating reading pages…"),
+            "Creating reading pages…",
             0.7,
-            this.text("正在启动排版引擎", "Starting the layout engine"),
+            "Starting the layout engine",
           );
           sanitizerCleanup = installPublicationSanitizer(book.transformTarget);
           await withLoadTimeout(candidate.open(book), timeout, () => {
             if (generation === this.loadGeneration) {
               this.showLoading(
-                this.text("正在等待排版完成…", "Waiting for layout…"),
+                "Waiting for layout…",
                 0.76,
-                this.text("复杂图片或字体可能需要更多时间", "Complex images or fonts may need more time"),
+                "Complex images or fonts may need more time",
               );
             }
           });
@@ -1210,10 +1185,10 @@ export class OmniBookReaderView extends FileView {
       this.bookAuthor = formatLanguageValue(reader.book.metadata?.author);
       this.titleEl?.setText(this.bookTitle);
       this.sidebarBookTitleEl?.setText(this.bookTitle);
-      this.sidebarBookAuthorEl?.setText(this.bookAuthor || this.text("作者信息未提供", "Author not provided"));
-      this.sidebarCoverMarkEl?.setText(Array.from(this.bookTitle.trim())[0]?.toLocaleUpperCase("zh-CN") ?? "O");
+      this.sidebarBookAuthorEl?.setText(this.bookAuthor || "Author not provided");
+      this.sidebarCoverMarkEl?.setText(Array.from(this.bookTitle.trim())[0]?.toLocaleUpperCase("en-US") ?? "O");
       if (openedSource) void this.loadSidebarCover(reader, openedSource, generation);
-      this.chapterEl?.setText(this.text("正在定位…", "Locating…"));
+      this.chapterEl?.setText("Locating…");
       this.renderToc(reader.book.toc ?? []);
       this.renderBookmarks();
       this.renderHighlights();
@@ -1224,9 +1199,9 @@ export class OmniBookReaderView extends FileView {
       }
 
       this.showLoading(
-        this.text("正在恢复阅读位置…", "Restoring reading position…"),
+        "Restoring reading position…",
         0.9,
-        this.text("即将完成", "Almost ready"),
+        "Almost ready",
       );
       await withLoadTimeout(this.restorePosition(reader, this.bookState), timeout);
       if (generation !== this.loadGeneration) return;
@@ -1263,7 +1238,7 @@ export class OmniBookReaderView extends FileView {
       const url = URL.createObjectURL(blob);
       this.sidebarCoverUrl = url;
       const image = coverEl.createEl("img");
-      image.alt = this.text(`${this.bookTitle} 封面`, `${this.bookTitle} cover`);
+      image.alt = `${this.bookTitle} cover`;
       image.decoding = "async";
       image.src = url;
       image.addEventListener("load", () => {
@@ -1333,7 +1308,7 @@ export class OmniBookReaderView extends FileView {
     };
     const onFootnoteRender = (event: Event): void => {
       const detail = (event as CustomEvent<{ view: FoliateViewElement; href: string }>).detail;
-      new FootnotePreviewModal(this.app, detail.view, detail.href, this.language(), async (href) => {
+      new FootnotePreviewModal(this.app, detail.view, detail.href, async (href) => {
         await reader.goTo(href);
       }).open();
     };
@@ -1367,7 +1342,7 @@ export class OmniBookReaderView extends FileView {
         return;
       } catch (error) {
         console.warn("[Omni Book Reader] Stored CFI could not be restored", error);
-        new Notice(this.text("原阅读位置已失效，正在按进度恢复", "The saved location is no longer valid. Restoring by progress."));
+        new Notice("The saved location is no longer valid. Restoring by progress.");
       }
     }
 
@@ -1751,10 +1726,7 @@ export class OmniBookReaderView extends FileView {
     event?.stopImmediatePropagation();
     if (decision.notify) {
       this.selectionNavigationNoticeShown = true;
-      this.showLocalStatus(this.text(
-        "请先保存或取消当前选区",
-        "Save or cancel the current selection first",
-      ));
+      this.showLocalStatus("Save or cancel the current selection first");
     }
     return true;
   }
@@ -1828,10 +1800,7 @@ export class OmniBookReaderView extends FileView {
         reader.renderer.page,
         reader.renderer.pages,
       )) {
-        this.showLocalStatus(this.text(
-          "已到章节边界，请先保存当前高亮，再继续选择下一章",
-          "Chapter boundary reached. Save this highlight before selecting the next chapter.",
-        ));
+        this.showLocalStatus("Chapter boundary reached. Save this highlight before selecting the next chapter.");
         return;
       }
       await (direction === "next" ? reader.goRight() : reader.goLeft());
@@ -1841,10 +1810,7 @@ export class OmniBookReaderView extends FileView {
         await reader.select(pending.cfi);
         const restored = reader.renderer.getContents?.()[0];
         if (restored?.index === pending.sectionIndex) this.captureSelection(restored.doc, restored.index);
-        this.showLocalStatus(this.text(
-          "已到章节边界，请先保存当前高亮，再继续选择下一章",
-          "Chapter boundary reached. Save this highlight before selecting the next chapter.",
-        ));
+        this.showLocalStatus("Chapter boundary reached. Save this highlight before selecting the next chapter.");
         return;
       }
       const selection = content.doc.defaultView?.getSelection?.() ?? content.doc.getSelection?.();
@@ -1852,7 +1818,7 @@ export class OmniBookReaderView extends FileView {
       this.captureSelection(content.doc, content.index);
     } catch (error) {
       console.warn("[Omni Book Reader] Could not turn the page while selecting", error);
-      this.showLocalStatus(this.text("无法继续跨页选择", "Could not continue the selection across pages"));
+      this.showLocalStatus("Could not continue the selection across pages");
     } finally {
       this.selectionPageTurnRunning = false;
     }
@@ -1860,7 +1826,7 @@ export class OmniBookReaderView extends FileView {
 
   async exportCurrentChapter(): Promise<void> {
     if (!this.reader || !this.file || !this.bookState) {
-      new Notice(this.text("请先打开一本 EPUB", "Open an EPUB first"));
+      new Notice("Open an EPUB first");
       return;
     }
     const resolvedIndex = this.currentLocation.cfi
@@ -1869,7 +1835,7 @@ export class OmniBookReaderView extends FileView {
     const contents = this.reader.renderer.getContents?.() ?? [];
     const content = contents.find((item) => item.index === resolvedIndex) ?? contents[0];
     if (!content) {
-      new Notice(this.text("当前章节尚未加载完成", "The current chapter has not finished loading"));
+      new Notice("The current chapter has not finished loading");
       return;
     }
     try {
@@ -1885,21 +1851,21 @@ export class OmniBookReaderView extends FileView {
         highlights: this.bookState.highlights,
       });
       await this.app.workspace.openLinkText(path, this.file.path, false);
-      new Notice(this.text("当前章节已导出为 Markdown", "Current chapter exported as Markdown"));
+      new Notice("Current chapter exported as Markdown");
     } catch (error) {
       console.error("[Omni Book Reader] Chapter export failed", error);
       new Notice(error instanceof Error
-        ? this.text(`章节导出失败：${error.message}`, `Chapter export failed: ${error.message}`)
-        : this.text("章节导出失败", "Chapter export failed"));
+        ? `Chapter export failed: ${error.message}`
+        : "Chapter export failed");
     }
   }
 
   private openImagePreview(source: string, alt: string): void {
     if (!this.file) return;
-    new ImagePreviewModal(this.app, source, alt, this.language(), async (blob) => {
+    new ImagePreviewModal(this.app, source, alt, async (blob) => {
       const parent = this.file?.parent?.path ?? "";
-      const folder = `${parent}/${this.file?.basename ?? "EPUB"}/图片`;
-      const base = safeFileName(alt || `${this.currentChapter()}-${Date.now()}`, this.text("书内图片", "book-image"));
+      const folder = `${parent}/${this.file?.basename ?? "EPUB"}/Images`;
+      const base = safeFileName(alt || `${this.currentChapter()}-${Date.now()}`, "book-image");
       const extension = extensionForBlob(blob, source);
       let path = `${folder}/${base}.${extension}`;
       let suffix = 2;
@@ -1977,7 +1943,7 @@ export class OmniBookReaderView extends FileView {
     const text = selection.toString().replace(/\s+/g, " ").trim();
     if (!text) return;
     if (text.length > 10000) {
-      new Notice(this.text("单次高亮不能超过 10,000 个字符", "A highlight cannot exceed 10,000 characters"));
+      new Notice("A highlight cannot exceed 10,000 characters");
       this.clearPendingSelection();
       return;
     }
@@ -2141,14 +2107,13 @@ export class OmniBookReaderView extends FileView {
     this.plugin.store.markChanged(0);
     await this.syncAnnotationDocuments();
     this.renderHighlights();
-    this.showLocalStatus(this.text("高亮已删除", "Highlight deleted"));
+    this.showLocalStatus("Highlight deleted");
   }
 
   private openHighlightActions(highlight: ReaderHighlight): void {
     new HighlightActionsModal(
       this.app,
       highlight,
-      this.language(),
       async (edit) => this.saveHighlightEdit(highlight, edit),
       async () => this.deleteHighlight(highlight),
     ).open();
@@ -2156,7 +2121,7 @@ export class OmniBookReaderView extends FileView {
 
   private async saveHighlightEdit(highlight: ReaderHighlight, edit: HighlightEdit): Promise<void> {
     const note = edit.note.replace(/\r\n?/g, "\n").trim();
-    if (note.length > 20000) throw new Error(this.text("单条笔记不能超过 20,000 个字符", "A note cannot exceed 20,000 characters"));
+    if (note.length > 20000) throw new Error("A note cannot exceed 20,000 characters");
     const appearanceChanged = highlight.color !== edit.color || highlight.style !== edit.style;
     highlight.color = edit.color;
     highlight.style = edit.style;
@@ -2175,7 +2140,7 @@ export class OmniBookReaderView extends FileView {
     this.plugin.store.markChanged(0);
     await this.syncAnnotationDocuments();
     this.renderHighlights();
-    this.showLocalStatus(note ? this.text("标注与笔记已保存", "Annotation and note saved") : this.text("标注已保存", "Annotation saved"));
+    this.showLocalStatus(note ? "Annotation and note saved" : "Annotation saved");
   }
 
   private async syncAnnotationDocuments(): Promise<boolean> {
@@ -2192,8 +2157,8 @@ export class OmniBookReaderView extends FileView {
     } catch (error) {
       console.error("[Omni Book Reader] Could not sync annotation documents", error);
       new Notice(error instanceof Error
-        ? this.text(`无法同步高亮与笔记文档：${error.message}`, `Could not sync highlight and note documents: ${error.message}`)
-        : this.text("无法同步高亮与笔记文档", "Could not sync highlight and note documents"));
+        ? `Could not sync highlight and note documents: ${error.message}`
+        : "Could not sync highlight and note documents");
       return false;
     }
   }
@@ -2233,13 +2198,13 @@ export class OmniBookReaderView extends FileView {
     const loc = location.location?.current;
     const total = location.location?.total;
     const locationText = page
-      ? this.text(`第 ${page} 页`, `Page ${page}`)
+      ? `Page ${page}`
       : loc && total
-        ? this.text(`第 ${loc} / ${total} 页`, `Page ${loc} / ${total}`)
-        : loc ? this.text(`位置 ${loc}`, `Location ${loc}`) : "";
+        ? `Page ${loc} / ${total}`
+        : loc ? `Location ${loc}` : "";
     this.locationTextEl?.setText(locationText);
-    this.pageButtonEl?.setText(loc && total ? `${loc} / ${total}` : (page ? this.text(`第 ${page} 页`, `Page ${page}`) : percentage(fraction)));
-    this.immersiveLocationEl?.setText(locationText || this.text("正在定位", "Locating"));
+    this.pageButtonEl?.setText(loc && total ? `${loc} / ${total}` : (page ? `Page ${page}` : percentage(fraction)));
+    this.immersiveLocationEl?.setText(locationText || "Locating");
     this.updateCurrentToc(location.tocItem?.href);
     this.updateBookmarkButton();
     this.revealChrome();
@@ -2269,7 +2234,7 @@ export class OmniBookReaderView extends FileView {
   }
 
   private currentChapter(): string {
-    return formatLanguageValue(this.currentLocation.tocItem?.label) || this.text("未命名章节", "Untitled chapter");
+    return formatLanguageValue(this.currentLocation.tocItem?.label) || "Untitled chapter";
   }
 
   private startReadingStats(): void {
@@ -2314,21 +2279,17 @@ export class OmniBookReaderView extends FileView {
     const estimate = remaining && remaining.furthestFraction >= 0.02
       ? remaining.totalReadingMs / remaining.furthestFraction * (1 - remaining.furthestFraction)
       : 0;
-    const language = this.language();
-    this.readingStatsEl?.setText(this.text(
-      `本次 ${duration(this.sessionReadingMs, language)}${estimate ? ` · 剩余约 ${duration(estimate, language)}` : ""}`,
-      `This session ${duration(this.sessionReadingMs, language)}${estimate ? ` · about ${duration(estimate, language)} left` : ""}`,
-    ));
+    this.readingStatsEl?.setText(`This session ${duration(this.sessionReadingMs)}${estimate ? ` · about ${duration(estimate)} left` : ""}`);
   }
 
   openReadingStats(): void {
     this.tickReadingStats();
     const stats = this.bookState?.readingStats;
     if (!stats) {
-      new Notice(this.text("暂无阅读统计", "No reading statistics yet"));
+      new Notice("No reading statistics yet");
       return;
     }
-    new ReadingStatsModal(this.app, stats, this.sessionReadingMs, this.language(), () => {
+    new ReadingStatsModal(this.app, stats, this.sessionReadingMs, () => {
       if (stats.completedAt) delete stats.completedAt;
       else stats.completedAt = Date.now();
       this.plugin.store.markChanged(0);
@@ -2342,7 +2303,7 @@ export class OmniBookReaderView extends FileView {
     const countItems = (entries: FoliateTocItem[]): number => entries.reduce((total, item) => total + 1 + countItems(item.subitems ?? []), 0);
     this.tabCountEls.get("toc")?.setText(String(countItems(items)));
     if (!items.length) {
-      this.tocPanelEl.createDiv({ cls: "omni-book-reader-empty", text: this.text("此书没有可用目录", "This book has no table of contents") });
+      this.tocPanelEl.createDiv({ cls: "omni-book-reader-empty", text: "This book has no table of contents" });
       return;
     }
     this.renderTocLevel(this.tocPanelEl, items, 0);
@@ -2352,12 +2313,12 @@ export class OmniBookReaderView extends FileView {
     const list = parent.createEl("ul", { cls: "omni-book-reader-toc-list" });
     for (const item of items) {
       const row = list.createEl("li");
-      const label = formatLanguageValue(item.label) || this.text("未命名章节", "Untitled chapter");
+      const label = formatLanguageValue(item.label) || "Untitled chapter";
       const button = row.createEl("button", { cls: "omni-book-reader-list-button", attr: { type: "button", "data-depth": String(depth) } });
       button.style.setProperty("--omni-book-reader-toc-indent", `${Math.min(depth, 4) * 12}px`);
       button.createSpan({ cls: "omni-book-reader-toc-dot", attr: { "aria-hidden": "true" } });
       button.createSpan({ cls: "omni-book-reader-toc-label", text: label });
-      const marker = button.createSpan({ cls: "omni-book-reader-toc-current-marker", text: this.text("当前", "Current") });
+      const marker = button.createSpan({ cls: "omni-book-reader-toc-current-marker", text: "Current" });
       marker.setAttribute("aria-hidden", "true");
       if (item.href) {
         this.tocLinks.set(item.href, button);
@@ -2395,7 +2356,7 @@ export class OmniBookReaderView extends FileView {
     const items = this.bookState?.bookmarks ?? [];
     this.tabCountEls.get("bookmarks")?.setText(String(items.length));
     if (!items.length) {
-      this.bookmarkPanelEl.createDiv({ cls: "omni-book-reader-empty", text: this.text("还没有书签", "No bookmarks yet") });
+      this.bookmarkPanelEl.createDiv({ cls: "omni-book-reader-empty", text: "No bookmarks yet" });
       return;
     }
     for (const bookmark of items) this.renderBookmarkItem(this.bookmarkPanelEl, bookmark);
@@ -2405,9 +2366,9 @@ export class OmniBookReaderView extends FileView {
     const row = parent.createDiv({ cls: `omni-book-reader-saved-item${bookmark.stale ? " is-stale" : ""}` });
     const open = row.createEl("button", { cls: "omni-book-reader-saved-content", attr: { type: "button" } });
     open.createDiv({ cls: "omni-book-reader-saved-title", text: bookmark.chapter });
-    open.createDiv({ cls: "omni-book-reader-saved-meta", text: `${percentage(bookmark.fraction)} · ${new Date(bookmark.createdAt).toLocaleDateString(uiLocale(this.language()))}` });
+    open.createDiv({ cls: "omni-book-reader-saved-meta", text: `${percentage(bookmark.fraction)} · ${new Date(bookmark.createdAt).toLocaleDateString("en-US")}` });
     open.addEventListener("click", () => void this.navigateSavedLocation(bookmark));
-    const remove = iconButton(row, "trash-2", this.text("删除书签", "Delete bookmark"));
+    const remove = iconButton(row, "trash-2", "Delete bookmark");
     remove.addEventListener("click", () => {
       if (!this.bookState) return;
       this.bookState.bookmarks = this.bookState.bookmarks.filter((item) => item.id !== bookmark.id);
@@ -2418,7 +2379,6 @@ export class OmniBookReaderView extends FileView {
   }
 
   private renderHighlights(): void {
-    const t = (zh: string, en: string): string => this.text(zh, en);
     if (!this.highlightPanelEl) return;
     this.highlightPanelEl.empty();
     const items = this.bookState?.highlights ?? [];
@@ -2426,22 +2386,22 @@ export class OmniBookReaderView extends FileView {
     const documents = this.bookState?.annotationDocuments;
     if (documents) {
       const actions = this.highlightPanelEl.createDiv({ cls: "omni-book-reader-document-actions" });
-      const exportHighlights = actions.createEl("button", { text: t("导出高亮", "Export highlights"), attr: { type: "button", "aria-label": t("导出全部高亮摘抄", "Export all highlights") } });
+      const exportHighlights = actions.createEl("button", { text: "Export highlights", attr: { type: "button", "aria-label": "Export all highlights" } });
       exportHighlights.addEventListener("click", () => void this.exportAnnotations("highlights"));
-      const exportNotes = actions.createEl("button", { text: t("导出笔记", "Export notes"), attr: { type: "button", "aria-label": t("导出全部高亮笔记", "Export all highlight notes") } });
+      const exportNotes = actions.createEl("button", { text: "Export notes", attr: { type: "button", "aria-label": "Export all highlight notes" } });
       exportNotes.addEventListener("click", () => void this.exportAnnotations("notes"));
     }
     if (!items.length) {
-      this.highlightPanelEl.createDiv({ cls: "omni-book-reader-empty", text: t("选中文字即可创建高亮", "Select text to create a highlight") });
+      this.highlightPanelEl.createDiv({ cls: "omni-book-reader-empty", text: "Select text to create a highlight" });
       return;
     }
-    const availableTags = Array.from(new Set(items.flatMap((highlight) => highlight.tags))).sort((left, right) => left.localeCompare(right, "zh-CN"));
-    const availableChapters = Array.from(new Set(items.map((highlight) => highlight.chapter))).sort((left, right) => left.localeCompare(right, "zh-CN"));
+    const availableTags = Array.from(new Set(items.flatMap((highlight) => highlight.tags))).sort((left, right) => left.localeCompare(right, "en-US"));
+    const availableChapters = Array.from(new Set(items.map((highlight) => highlight.chapter))).sort((left, right) => left.localeCompare(right, "en-US"));
     if (this.highlightTagFilter && !availableTags.includes(this.highlightTagFilter)) this.highlightTagFilter = "";
     if (this.highlightChapterFilter && !availableChapters.includes(this.highlightChapterFilter)) this.highlightChapterFilter = "";
     const filter = this.highlightPanelEl.createDiv({ cls: "omni-book-reader-highlight-filter" });
-    const tagSelect = filter.createEl("select", { attr: { "aria-label": t("按标签筛选标注", "Filter annotations by tag") } });
-    tagSelect.createEl("option", { text: t("全部标签", "All tags"), value: "" });
+    const tagSelect = filter.createEl("select", { attr: { "aria-label": "Filter annotations by tag" } });
+    tagSelect.createEl("option", { text: "All tags", value: "" });
     for (const tag of availableTags) tagSelect.createEl("option", { text: tag, value: tag });
     tagSelect.value = this.highlightTagFilter;
     tagSelect.disabled = !availableTags.length;
@@ -2449,26 +2409,26 @@ export class OmniBookReaderView extends FileView {
       this.highlightTagFilter = tagSelect.value;
       this.renderHighlights();
     });
-    const chapterSelect = filter.createEl("select", { attr: { "aria-label": t("按章节筛选标注", "Filter annotations by chapter") } });
-    chapterSelect.createEl("option", { text: t("全部章节", "All chapters"), value: "" });
+    const chapterSelect = filter.createEl("select", { attr: { "aria-label": "Filter annotations by chapter" } });
+    chapterSelect.createEl("option", { text: "All chapters", value: "" });
     for (const chapter of availableChapters) chapterSelect.createEl("option", { text: chapter, value: chapter });
     chapterSelect.value = this.highlightChapterFilter;
     chapterSelect.addEventListener("change", () => {
       this.highlightChapterFilter = chapterSelect.value;
       this.renderHighlights();
     });
-    const colorSelect = filter.createEl("select", { attr: { "aria-label": t("按颜色筛选标注", "Filter annotations by color") } });
-    colorSelect.createEl("option", { text: t("全部颜色", "All colors"), value: "" });
+    const colorSelect = filter.createEl("select", { attr: { "aria-label": "Filter annotations by color" } });
+    colorSelect.createEl("option", { text: "All colors", value: "" });
     for (const [color, definition] of Object.entries(HIGHLIGHT_COLORS) as Array<[HighlightColor, typeof HIGHLIGHT_COLORS[HighlightColor]]>) {
-      colorSelect.createEl("option", { text: this.definitionLabel(definition), value: color });
+      colorSelect.createEl("option", { text: definition.label, value: color });
     }
     colorSelect.value = this.highlightColorFilter;
     colorSelect.addEventListener("change", () => {
       this.highlightColorFilter = colorSelect.value as HighlightColor | "";
       this.renderHighlights();
     });
-    const noteSelect = filter.createEl("select", { attr: { "aria-label": t("按笔记状态筛选标注", "Filter annotations by note status") } });
-    for (const [value, text] of [["all", t("全部笔记状态", "All note statuses")], ["with-note", t("有笔记", "With notes")], ["without-note", t("无笔记", "Without notes")]]) {
+    const noteSelect = filter.createEl("select", { attr: { "aria-label": "Filter annotations by note status" } });
+    for (const [value, text] of [["all", "All note statuses"], ["with-note", "With notes"], ["without-note", "Without notes"]]) {
       noteSelect.createEl("option", { value, text });
     }
     noteSelect.value = this.highlightNoteFilter;
@@ -2476,8 +2436,8 @@ export class OmniBookReaderView extends FileView {
       this.highlightNoteFilter = noteSelect.value as HighlightNoteFilter;
       this.renderHighlights();
     });
-    const sortSelect = filter.createEl("select", { attr: { "aria-label": t("标注排序", "Sort annotations") } });
-    for (const [value, text] of [["newest", t("最新创建", "Newest")], ["oldest", t("最早创建", "Oldest")], ["chapter", t("按章节", "By chapter")]]) {
+    const sortSelect = filter.createEl("select", { attr: { "aria-label": "Sort annotations" } });
+    for (const [value, text] of [["newest", "Newest"], ["oldest", "Oldest"], ["chapter", "By chapter"]]) {
       sortSelect.createEl("option", { value, text });
     }
     sortSelect.value = this.highlightSort;
@@ -2485,8 +2445,8 @@ export class OmniBookReaderView extends FileView {
       this.highlightSort = sortSelect.value as HighlightSort;
       this.renderHighlights();
     });
-    const dateSelect = filter.createEl("select", { attr: { "aria-label": t("按创建时间筛选标注", "Filter annotations by creation date") } });
-    for (const [value, text] of [["all", t("全部时间", "All time")], ["today", t("今天", "Today")], ["7d", t("最近 7 天", "Last 7 days")], ["30d", t("最近 30 天", "Last 30 days")]]) {
+    const dateSelect = filter.createEl("select", { attr: { "aria-label": "Filter annotations by creation date" } });
+    for (const [value, text] of [["all", "All time"], ["today", "Today"], ["7d", "Last 7 days"], ["30d", "Last 30 days"]]) {
       dateSelect.createEl("option", { value, text });
     }
     dateSelect.value = this.highlightDateFilter;
@@ -2510,11 +2470,11 @@ export class OmniBookReaderView extends FileView {
       .sort((left, right) => this.highlightSort === "oldest"
         ? left.createdAt - right.createdAt
         : this.highlightSort === "chapter"
-          ? left.chapter.localeCompare(right.chapter, "zh-CN") || left.createdAt - right.createdAt
+          ? left.chapter.localeCompare(right.chapter, "en-US") || left.createdAt - right.createdAt
           : right.createdAt - left.createdAt);
     filter.createSpan({ text: `${filteredItems.length}/${items.length}` });
     if (!filteredItems.length) {
-      this.highlightPanelEl.createDiv({ cls: "omni-book-reader-empty", text: t("没有匹配筛选条件的标注", "No annotations match these filters") });
+      this.highlightPanelEl.createDiv({ cls: "omni-book-reader-empty", text: "No annotations match these filters" });
       return;
     }
     const groups = new Map<string, ReaderHighlight[]>();
@@ -2534,7 +2494,7 @@ export class OmniBookReaderView extends FileView {
       const open = row.createEl("button", { cls: "omni-book-reader-saved-content", attr: { type: "button" } });
       open.createDiv({ cls: "omni-book-reader-highlight-text", text: highlight.text });
       open.addEventListener("click", () => void this.navigateSavedLocation(highlight));
-      const note = iconButton(row, "notebook-pen", highlight.note ? t("编辑标注与笔记", "Edit annotation and note") : t("编辑标注并添加笔记", "Edit annotation and add note"));
+      const note = iconButton(row, "notebook-pen", highlight.note ? "Edit annotation and note" : "Edit annotation and add note");
       note.toggleClass("is-active", Boolean(highlight.note));
       note.addEventListener("click", () => this.openHighlightActions(highlight));
       }
@@ -2552,7 +2512,7 @@ export class OmniBookReaderView extends FileView {
       this.plugin.store.markChanged(0);
       this.renderBookmarks();
       this.renderHighlights();
-      new Notice(this.text("该定位已失效，数据已保留供你删除或检查", "This location is no longer valid. Its data was kept for review or deletion."));
+      new Notice("This location is no longer valid. Its data was kept for review or deletion.");
       return;
     }
     try {
@@ -2562,7 +2522,7 @@ export class OmniBookReaderView extends FileView {
       this.plugin.store.markChanged(0);
       this.renderBookmarks();
       this.renderHighlights();
-      new Notice(this.text("该定位已失效，数据已保留供你删除或检查", "This location is no longer valid. Its data was kept for review or deletion."));
+      new Notice("This location is no longer valid. Its data was kept for review or deletion.");
       return;
     }
     item.stale = false;
@@ -2572,7 +2532,7 @@ export class OmniBookReaderView extends FileView {
   private updateBookmarkButton(): void {
     const active = Boolean(this.currentLocation.cfi && this.bookState?.bookmarks.some((item) => item.cfi === this.currentLocation.cfi));
     this.bookmarkButton?.toggleClass("is-active", active);
-    this.bookmarkButton?.setAttribute("aria-label", active ? this.text("移除当前位置书签", "Remove bookmark here") : this.text("添加当前位置书签", "Add bookmark here"));
+    this.bookmarkButton?.setAttribute("aria-label", active ? "Remove bookmark here" : "Add bookmark here");
   }
 
   private scheduleSearch(): void {
@@ -2590,10 +2550,10 @@ export class OmniBookReaderView extends FileView {
     this.searchResultsEl.empty();
     this.reader.clearSearch();
     if (!query) {
-      this.searchStatusEl.setText(this.text("输入关键词开始搜索", "Enter a keyword to search"));
+      this.searchStatusEl.setText("Enter a keyword to search");
       return;
     }
-    this.searchStatusEl.setText(this.text("正在搜索 0%…", "Searching 0%…"));
+    this.searchStatusEl.setText("Searching 0%…");
     let count = 0;
     let truncated = false;
     try {
@@ -2606,7 +2566,7 @@ export class OmniBookReaderView extends FileView {
         if (!this.searchSession.isActive(token)) break;
         if (result === "done") break;
         if ("progress" in result) {
-          this.searchStatusEl.setText(this.text(`正在搜索 ${percentage(result.progress)}…已找到 ${count} 条`, `Searching ${percentage(result.progress)}… ${count} found`));
+          this.searchStatusEl.setText(`Searching ${percentage(result.progress)}… ${count} found`);
           continue;
         }
         const group = result;
@@ -2615,20 +2575,20 @@ export class OmniBookReaderView extends FileView {
             truncated = true;
             break;
           }
-          this.renderSearchResult(group.label || this.text("未命名章节", "Untitled chapter"), item);
+          this.renderSearchResult(group.label || "Untitled chapter", item);
           count += 1;
         }
         if (truncated) break;
       }
       if (this.searchSession.isActive(token)) {
         this.searchStatusEl.setText(truncated
-          ? this.text("已显示前 500 条结果，请缩小关键词范围", "Showing the first 500 results. Narrow your search.")
-          : this.text(`找到 ${count} 条结果`, `${count} results found`));
+          ? "Showing the first 500 results. Narrow your search."
+          : `${count} results found`);
       }
     } catch (error) {
       if (this.searchSession.isActive(token)) {
         console.error("[Omni Book Reader] Search failed", error);
-        this.searchStatusEl.setText(this.text("搜索失败，请重试", "Search failed. Try again."));
+        this.searchStatusEl.setText("Search failed. Try again.");
       }
     }
   }
@@ -2637,7 +2597,7 @@ export class OmniBookReaderView extends FileView {
     if (!this.searchResultsEl) return;
     const button = this.searchResultsEl.createEl("button", { cls: "omni-book-reader-search-result", attr: { type: "button" } });
     button.createDiv({ cls: "omni-book-reader-search-result-title", text: label });
-    button.createDiv({ cls: "omni-book-reader-search-result-excerpt", text: excerptToText(item.excerpt) || this.text("匹配内容", "Matching text") });
+    button.createDiv({ cls: "omni-book-reader-search-result-excerpt", text: excerptToText(item.excerpt) || "Matching text" });
     button.addEventListener("click", () => {
       void this.reader?.select(item.cfi);
       if (Platform.isMobile) this.setSidebarOpen(false);
@@ -2767,22 +2727,10 @@ export class OmniBookReaderView extends FileView {
     if (!this.viewerEl) return;
     this.viewerEl.empty();
     const panel = this.viewerEl.createDiv({ cls: "omni-book-reader-error" });
-    panel.createEl("h3", { text: this.text("无法打开这本 EPUB", "Could not open this EPUB") });
-    panel.createEl("p", { text: error instanceof Error ? error.message : this.text("文件可能已损坏或格式不受支持。", "The file may be damaged or use an unsupported format.") });
-    const retry = panel.createEl("button", { cls: "mod-cta", text: this.text("重试", "Retry") });
+    panel.createEl("h3", { text: "Could not open this EPUB" });
+    panel.createEl("p", { text: error instanceof Error ? error.message : "The file may be damaged or use an unsupported format." });
+    const retry = panel.createEl("button", { cls: "mod-cta", text: "Retry" });
     retry.addEventListener("click", () => void this.loadBook(file));
-  }
-
-  private language(): InterfaceLanguage {
-    return this.plugin.getReaderSettings().interfaceLanguage;
-  }
-
-  private text(zh: string, en: string): string {
-    return uiText(this.language(), zh, en);
-  }
-
-  private definitionLabel(definition: { zh: string; en: string }): string {
-    return uiText(this.language(), definition.zh, definition.en);
   }
 
   private async cleanupReader(invalidateLoad = true): Promise<void> {

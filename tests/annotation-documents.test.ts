@@ -15,8 +15,8 @@ function highlight(overrides: Partial<ReaderHighlight> = {}): ReaderHighlight {
   return {
     id: "highlight-1",
     cfi: "epubcfi(/6/2!/4/2:0)",
-    text: "被高亮的原文",
-    chapter: "第一章",
+    text: "The highlighted source text",
+    chapter: "Chapter 1",
     color: "yellow",
     style: "highlight",
     tags: [],
@@ -28,44 +28,44 @@ function highlight(overrides: Partial<ReaderHighlight> = {}): ReaderHighlight {
 
 describe("annotation documents", () => {
   it("renders separate highlight and note documents in the expected readable format", () => {
-    const item = highlight({ note: "我的想法", noteUpdatedAt: createdAt, tags: ["原型"] });
-    const options = { sourcePath: "书籍/测试书.epub", vaultName: "测试 Vault" };
-    const highlights = renderHighlightDocument("测试书", "测试作者", [item], options);
-    const notes = renderNoteDocument("测试书", "测试作者", [item], options);
+    const item = highlight({ note: "My thoughts", noteUpdatedAt: createdAt, tags: ["archetype"] });
+    const options = { sourcePath: "Books/Test Book.epub", vaultName: "Test Vault" };
+    const highlights = renderHighlightDocument("Test Book", "Test Author", [item], options);
+    const notes = renderNoteDocument("Test Book", "Test Author", [item], options);
 
     expect(highlights).toContain("# Omni Book Reader - Highlights");
-    expect(highlights).toContain("### 第一章\n\n> 被高亮的原文");
-    expect(highlights).not.toContain("我的想法");
+    expect(highlights).toContain("### Chapter 1\n\n> The highlighted source text");
+    expect(highlights).not.toContain("My thoughts");
     expect(notes).toContain("# Omni Book Reader - Notes");
-    expect(notes).toContain("**Note:** 我的想法");
-    expect(notes).toContain("Date: 2026-07-19 | Color: #FFD54F | Style: 高亮 | Tags: 原型");
+    expect(notes).toContain("**Note:** My thoughts");
+    expect(notes).toContain("Date: 2026-07-19 | Color: #FFD54F | Style: Highlight | Tags: archetype");
     expect(notes).toContain("obsidian://omni-book-reader?sourceVault=");
     expect(notes).not.toMatch(/[?&]vault=/);
   });
 
   it("preserves manual text outside managed blocks and supports custom templates", () => {
-    const generated = renderHighlightDocument("测试书", "作者", [highlight()], {
-      sourcePath: "书籍/测试书.epub",
+    const generated = renderHighlightDocument("Test Book", "Author", [highlight()], {
+      sourcePath: "Books/Test Book.epub",
       vaultName: "Vault",
-      customTemplate: "# {{book.title}}\n导出：{{export.date}}\n\n{{entries}}",
+      customTemplate: "# {{book.title}}\nExported: {{export.date}}\n\n{{entries}}",
       exportedAt: createdAt,
     });
-    const first = mergeManagedDocument("# 我的手写总结\n", "highlights", generated);
-    const withManualSuffix = `${first}\n## 我的结论\n不会被插件覆盖\n`;
-    const second = mergeManagedDocument(withManualSuffix, "highlights", generated.replace("被高亮的原文", "更新后的摘抄"));
-    expect(second).toContain("# 我的手写总结");
-    expect(second).toContain("更新后的摘抄");
-    expect(second).toContain("## 我的结论\n不会被插件覆盖");
-    expect(second).not.toContain("被高亮的原文");
+    const first = mergeManagedDocument("# My handwritten summary\n", "highlights", generated);
+    const withManualSuffix = `${first}\n## My conclusion\nWill not be overwritten by the plugin\n`;
+    const second = mergeManagedDocument(withManualSuffix, "highlights", generated.replace("The highlighted source text", "The updated excerpt"));
+    expect(second).toContain("# My handwritten summary");
+    expect(second).toContain("The updated excerpt");
+    expect(second).toContain("## My conclusion\nWill not be overwritten by the plugin");
+    expect(second).not.toContain("The highlighted source text");
     expect(second.match(/omni-book-reader:highlights:start/g)).toHaveLength(1);
-    expect(generated).toContain("# 测试书");
-    expect(generated).toContain("导出：2026-07-19");
-    const cfiLink = buildCfiLink("Vault", "书籍/测试书.epub", highlight().cfi);
+    expect(generated).toContain("# Test Book");
+    expect(generated).toContain("Exported: 2026-07-19");
+    const cfiLink = buildCfiLink("Vault", "Books/Test Book.epub", highlight().cfi);
     expect(cfiLink).toContain("sourceVault=Vault");
     expect(cfiLink).not.toMatch(/[?&]vault=/);
     expect(cfiLink).toContain("cfi=epubcfi%28");
-    expect(() => mergeManagedDocument("<!-- omni-book-reader:highlights:start -->\n损坏", "highlights", generated))
-      .toThrow("受控区块标记不完整");
+    expect(() => mergeManagedDocument("<!-- omni-book-reader:highlights:start -->\ncorrupted", "highlights", generated))
+      .toThrow("managed-block markers in the annotation document are incomplete");
   });
 
   it("does not resolve a stale custom template path while an internal preset is selected", async () => {
@@ -78,7 +78,7 @@ describe("annotation documents", () => {
       }),
       modify: vi.fn(),
       cachedRead: vi.fn(),
-      getName: vi.fn(() => "测试 Vault"),
+      getName: vi.fn(() => "Test Vault"),
     } as unknown as Vault;
     const service = new AnnotationDocumentService(vault);
     const state: BookState = {
@@ -88,12 +88,12 @@ describe("annotation documents", () => {
     };
 
     await expect(service.sync({
-      sourceFile: { path: "书籍/测试书.epub", basename: "测试书" } as TFile,
+      sourceFile: { path: "Books/Test Book.epub", basename: "Test Book" } as TFile,
       state,
-      title: "测试书",
-      author: "测试作者",
+      title: "Test Book",
+      author: "Test Author",
       exportTemplate: "classic",
-      customExportTemplatePath: "模板/已删除.md",
+      customExportTemplatePath: "Templates/Deleted.md",
     })).resolves.toBeUndefined();
     expect(vault.cachedRead).not.toHaveBeenCalled();
   });
@@ -112,7 +112,7 @@ describe("annotation documents", () => {
         file.content = content;
       }),
       cachedRead: vi.fn(async (file: { content?: string }) => file.content ?? ""),
-      getName: vi.fn(() => "测试 Vault"),
+      getName: vi.fn(() => "Test Vault"),
     } as unknown as Vault;
     const state: BookState = {
       sourceSignature: { size: 1, mtime: 1 },
@@ -121,48 +121,48 @@ describe("annotation documents", () => {
     };
     const service = new AnnotationDocumentService(vault);
     const sourceFile = {
-      path: "文献笔记/读书笔记/测试书.epub",
-      basename: "测试书",
+      path: "Literature notes/Reading notes/Test Book.epub",
+      basename: "Test Book",
     } as TFile;
 
-    entries.set("模板/导出.md", {
-      path: "模板/导出.md",
+    entries.set("Templates/Export.md", {
+      path: "Templates/Export.md",
       extension: "md",
-      content: "# {{document.title}}\n\n书籍：{{book.title}}\n\n{{entries}}",
+      content: "# {{document.title}}\n\nBook: {{book.title}}\n\n{{entries}}",
     });
     await service.sync({
       sourceFile,
       state,
-      title: "测试书",
-      author: "测试作者",
+      title: "Test Book",
+      author: "Test Author",
       exportTemplate: "custom",
-      customExportTemplatePath: "模板/导出.md",
+      customExportTemplatePath: "Templates/Export.md",
     });
     const paths = state.annotationDocuments;
-    expect(paths?.highlightPath).toMatch(/^文献笔记\/读书笔记\/测试书\/测试书-Highlight-\d{4}-\d{2}-\d{2}\.md$/);
-    expect(paths?.notePath).toMatch(/^文献笔记\/读书笔记\/测试书\/测试书-Note-\d{4}-\d{2}-\d{2}\.md$/);
+    expect(paths?.highlightPath).toMatch(/^Literature notes\/Reading notes\/Test Book\/Test Book-Highlight-\d{4}-\d{2}-\d{2}\.md$/);
+    expect(paths?.notePath).toMatch(/^Literature notes\/Reading notes\/Test Book\/Test Book-Note-\d{4}-\d{2}-\d{2}\.md$/);
 
-    state.highlights[0]!.note = "后来添加的笔记";
+    state.highlights[0]!.note = "A note added later";
     await service.sync({
       sourceFile,
       state,
-      title: "测试书",
-      author: "测试作者",
+      title: "Test Book",
+      author: "Test Author",
       exportTemplate: "custom",
-      customExportTemplatePath: "模板/导出.md",
+      customExportTemplatePath: "Templates/Export.md",
     });
     await service.sync({
       sourceFile,
       state,
-      title: "测试书",
-      author: "测试作者",
+      title: "Test Book",
+      author: "Test Author",
       exportTemplate: "custom",
-      customExportTemplatePath: "模板/导出.md",
+      customExportTemplatePath: "Templates/Export.md",
     });
     expect(vault.create).toHaveBeenCalledTimes(2);
     expect(vault.modify).toHaveBeenCalledTimes(1);
-    expect(entries.get(paths!.notePath)?.content).toContain("**Note:** 后来添加的笔记");
-    expect(entries.get(paths!.notePath)?.content).toContain("书籍：测试书");
+    expect(entries.get(paths!.notePath)?.content).toContain("**Note:** A note added later");
+    expect(entries.get(paths!.notePath)?.content).toContain("Book: Test Book");
     expect(entries.get(paths!.highlightPath)?.content).toContain("omni-book-reader:highlights:start");
 
     const highlightDocument = entries.get(paths!.highlightPath)!;

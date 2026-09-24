@@ -31,16 +31,16 @@ describe("reader data store", () => {
           sourceSignature: { size: 100, mtime: 200 },
           position: { cfi: "not-a-cfi", fraction: 0.5, updatedAt: 1 },
           bookmarks: [
-            { id: "b1", cfi: "epubcfi(/6/2!/4/2:0)", fraction: 2, chapter: "一", createdAt: 2 },
+            { id: "b1", cfi: "epubcfi(/6/2!/4/2:0)", fraction: 2, chapter: "One", createdAt: 2 },
           ],
           highlights: [{
             id: "h1",
             cfi: "epubcfi(/6/2!/4/2:0)",
-            text: "摘抄",
-            chapter: "第一章",
+            text: "Excerpt",
+            chapter: "Chapter 1",
             color: "blue",
             style: "invalid",
-            tags: [" 原型 ", "原型", "心理 学"],
+            tags: [" archetype ", "archetype", "social psychology"],
             sectionIndex: 1,
             createdAt: 3,
           }],
@@ -64,7 +64,7 @@ describe("reader data store", () => {
     expect(data.books["Books/book.epub"]?.bookmarks[0]?.fraction).toBe(1);
     expect(data.books["Books/book.epub"]?.annotationDocuments?.notePath).toBe("Books/book/book-Note-2026-08-01.md");
     expect(data.books["Books/book.epub"]?.highlights[0]?.style).toBe("highlight");
-    expect(data.books["Books/book.epub"]?.highlights[0]?.tags).toEqual(["原型", "心理 学"]);
+    expect(data.books["Books/book.epub"]?.highlights[0]?.tags).toEqual(["archetype", "social psychology"]);
     expect(data.books["Books/book.epub"]?.readingStats).toMatchObject({ totalReadingMs: 0, furthestFraction: 1 });
     expect(data.schemaVersion).toBe(5);
   });
@@ -78,7 +78,7 @@ describe("reader data store", () => {
       id: "b1",
       cfi: "epubcfi(/6/2!/4/2:0)",
       fraction: 0.25,
-      chapter: "第一章",
+      chapter: "Chapter 1",
       createdAt: 1,
     });
     store.markChanged(0);

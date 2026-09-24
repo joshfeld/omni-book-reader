@@ -5,7 +5,7 @@ function isFile(value: TAbstractFile | null): value is TFile {
   return Boolean(value && "extension" in value);
 }
 
-export function safeFileName(value: string, fallback = "未命名"): string {
+export function safeFileName(value: string, fallback = "Untitled"): string {
   const result = Array.from(value, (character) => character.charCodeAt(0) < 32 ? "-" : character)
     .join("")
     .replace(/[\\/:*?"<>|]/g, "-")
@@ -19,14 +19,14 @@ export async function ensureVaultFolder(vault: Vault, path: string): Promise<voi
   for (const part of normalizePath(path).split("/").filter(Boolean)) {
     current = normalizePath([current, part].filter(Boolean).join("/"));
     const existing = vault.getAbstractFileByPath(current);
-    if (isFile(existing)) throw new Error(`目录路径已被文件占用：${current}`);
+    if (isFile(existing)) throw new Error(`Could not create the folder because a file already exists at: ${current}`);
     if (!existing) await vault.createFolder(current);
   }
 }
 
 export async function sourceToBlob(source: string): Promise<Blob> {
   if (!source.startsWith("blob:") && !source.startsWith("data:")) {
-    throw new Error("只允许读取书内 Blob/Data 图片");
+    throw new Error("Only images embedded in the book (blob: or data: URLs) can be read.");
   }
   return readLocalBlob(source);
 }
@@ -38,8 +38,8 @@ function readLocalBlob(source: string): Promise<Blob> {
     request.responseType = "blob";
     request.onload = () => request.status === 0 || (request.status >= 200 && request.status < 300)
       ? resolve(request.response as Blob)
-      : reject(new Error(`读取图片失败：${request.status}`));
-    request.onerror = () => reject(new Error("读取图片失败"));
+      : reject(new Error(`Could not read the image (${request.status})`));
+    request.onerror = () => reject(new Error("Could not read the image"));
     request.send();
   });
 }
@@ -64,6 +64,6 @@ export async function saveBlobToVault(vault: Vault, path: string, blob: Blob): P
   const existing = vault.getAbstractFileByPath(path);
   const data = await blob.arrayBuffer();
   if (isFile(existing)) await vault.modifyBinary(existing, data);
-  else if (existing) throw new Error(`图片目标路径不是文件：${path}`);
+  else if (existing) throw new Error(`The image destination path is not a file: ${path}`);
   else await vault.createBinary(path, data);
 }

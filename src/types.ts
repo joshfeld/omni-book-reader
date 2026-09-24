@@ -5,7 +5,6 @@ export type ReaderWidthMode = "standard" | "wide" | "full" | "edge";
 export type HighlightColor = "yellow" | "green" | "blue" | "pink";
 export type HighlightStyle = "highlight" | "underline" | "strikethrough" | "squiggly";
 export type ExportTemplatePreset = "classic" | "compact" | "callout" | "custom";
-export type InterfaceLanguage = "zh" | "en";
 export type BookshelfDisplayMode = "list" | "grid" | "covers";
 export type BookshelfFilter = "all" | "reading" | "finished" | "reading-list";
 export type BookshelfSort = "recent" | "title" | "progress";
@@ -14,7 +13,6 @@ export type ReadingPreset = "custom" | "comfortable" | "compact" | "large";
 export type InterfaceDensity = "comfortable" | "compact";
 
 export interface ReaderSettings {
-  interfaceLanguage: InterfaceLanguage;
   theme: ReaderTheme;
   layout: ReaderLayout;
   tapToTurnPages: boolean;

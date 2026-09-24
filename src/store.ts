@@ -46,7 +46,7 @@ function normalizeBookmark(value: unknown): Bookmark | null {
     id: input.id,
     cfi: input.cfi.trim(),
     fraction: fraction(input.fraction),
-    chapter: typeof input.chapter === "string" ? input.chapter : "未命名章节",
+    chapter: typeof input.chapter === "string" ? input.chapter : "Untitled chapter",
     createdAt: finite(input.createdAt, Date.now()),
     stale: input.stale === true || undefined,
   };
@@ -69,7 +69,7 @@ function normalizeHighlight(value: unknown): ReaderHighlight | null {
     id: input.id,
     cfi: input.cfi.trim(),
     text: input.text.slice(0, 10000),
-    chapter: typeof input.chapter === "string" ? input.chapter : "未命名章节",
+    chapter: typeof input.chapter === "string" ? input.chapter : "Untitled chapter",
     color: colors.has(String(input.color)) ? input.color as ReaderHighlight["color"] : "yellow",
     style: styles.has(String(input.style)) ? input.style as ReaderHighlight["style"] : "highlight",
     tags,

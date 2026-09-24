@@ -1174,8 +1174,8 @@ body.omni-book-reader-immersive-mode {
   --pavel-botanical-stone: #e6e2da;
   --pavel-botanical-terracotta: #c27b66;
   --pavel-botanical-muted: #718076;
-  --pavel-botanical-serif: "Playfair Display", "Source Han Serif SC", "Noto Serif SC", "Songti SC", Georgia, serif;
-  --pavel-botanical-sans: "Source Sans 3", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --pavel-botanical-serif: "Playfair Display", Georgia, "Times New Roman", serif;
+  --pavel-botanical-sans: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
   --pavel-botanical-shadow-sm: 0 4px 12px rgb(45 58 49 / 5%);
   --pavel-botanical-shadow-md: 0 14px 30px -12px rgb(45 58 49 / 16%);
   --pavel-botanical-shadow-lg: 0 24px 54px -18px rgb(45 58 49 / 22%);

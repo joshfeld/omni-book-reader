@@ -19,13 +19,13 @@ export function buildPublicationCss(settings: ReaderSettings): string {
     : theme === "sepia"
       ? { background: "#f3ead7", foreground: "#44382a", link: "#76591f", selection: "rgba(204, 164, 82, .35)" }
       : { background: "#f9f8f4", foreground: "#2d3a31", link: "#6f806a", selection: "rgba(140, 154, 132, .30)" };
-  const obsidianFont = hostStyle.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif';
+  const obsidianFont = hostStyle.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
   const fontFamily = settings.font === "obsidian"
     ? obsidianFont
     : settings.font === "serif"
-      ? '"Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, SimSun, Georgia, serif'
+      ? 'Charter, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif'
     : settings.font === "sans"
-      ? '"Source Han Sans SC", "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif'
+      ? 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
       : "";
   const baseFontSize = hostValue("--font-text-size", hostValue("--editor-font-size", hostStyle.fontSize || "16px"));
   const monospaceFont = hostValue("--font-monospace", 'ui-monospace, "SFMono-Regular", Consolas, monospace');

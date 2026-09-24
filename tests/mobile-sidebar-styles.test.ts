@@ -28,7 +28,7 @@ describe("mobile reader sidebar layout", () => {
     expect(nestedList).toContain("padding-left: 0");
   });
 
-  it("prioritizes 摘录 text without horizontal overflow", () => {
+  it("prioritizes excerpt text without horizontal overflow", () => {
     const savedContent = declarations(".omni-book-reader-saved-content");
     const panel = declarations(".omni-book-reader-panel");
 

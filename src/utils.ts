@@ -16,7 +16,7 @@ export function createId(prefix: string): string {
 
 export function formatLanguageValue(value: unknown): string {
   if (typeof value === "string") return value.trim();
-  if (Array.isArray(value)) return value.map(formatLanguageValue).filter(Boolean).join("、");
+  if (Array.isArray(value)) return value.map(formatLanguageValue).filter(Boolean).join(", ");
   if (value && typeof value === "object") {
     const record = value as Record<string, unknown>;
     if ("name" in record) return formatLanguageValue(record.name);
