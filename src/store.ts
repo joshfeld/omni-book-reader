@@ -234,6 +234,7 @@ export class ReaderDataStore {
   private saveTimer: number | null = null;
   private saveChain: Promise<void> = Promise.resolve();
   private dirty = false;
+  private readonly changeListeners = new Set<() => void>();
 
   constructor(
     private readonly adapter: DataAdapter,
@@ -297,6 +298,17 @@ export class ReaderDataStore {
     return this.data.books[normalizeVaultPath(path)];
   }
 
+  /** Live book states keyed by vault path. Mutations must be followed by `markChanged`. */
+  liveBooks(): Array<[string, BookState]> {
+    return Object.entries(this.data.books);
+  }
+
+  /** Registers a listener that runs whenever the data is marked as changed. Returns an unsubscribe function. */
+  onChange(listener: () => void): () => void {
+    this.changeListeners.add(listener);
+    return () => this.changeListeners.delete(listener);
+  }
+
   renameBook(oldPath: string, newPath: string): void {
     const oldKey = normalizeVaultPath(oldPath);
     const newKey = normalizeVaultPath(newPath);
@@ -332,6 +344,7 @@ export class ReaderDataStore {
 
   markChanged(delayMs = 250): void {
     this.dirty = true;
+    for (const listener of this.changeListeners) listener();
     if (this.saveTimer) window.clearTimeout(this.saveTimer);
     this.saveTimer = window.setTimeout(() => {
       this.saveTimer = null;

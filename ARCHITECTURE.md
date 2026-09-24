@@ -6,7 +6,7 @@ This document describes the current production architecture. Update it when a ch
 
 Omni Book Reader is a local-first Obsidian plugin for EPUB 2/3 files. Obsidian owns the Vault, workspace, commands, and plugin lifecycle. `foliate-js` parses and renders EPUB publications. The plugin stores reader state through Obsidian's plugin data API and writes user-requested Markdown and media exports into the Vault.
 
-The plugin does not require a backend service. EPUB content, reading state, annotations, and exports remain local unless the user's Obsidian setup synchronizes them externally.
+The plugin does not require a backend service. EPUB content, reading state, annotations, and exports remain local unless the user's Obsidian setup synchronizes them externally. Reading data can follow the user across devices through per-device sync files in the vault, which any file sync service (such as Obsidian Sync) copies.
 
 ## Runtime structure
 
@@ -15,6 +15,7 @@ The plugin does not require a backend service. EPUB content, reading state, anno
 | Plugin shell | `src/main.ts` | Lifecycle, view registration, commands, protocol links, settings, and cross-view coordination |
 | Reader | `src/reader-view.ts`, `src/reader-ui-state.ts`, `src/mobile-input.ts` | Reading UI, navigation, selection, annotations, overlays, mobile input, and reading statistics |
 | Bookshelf | `src/bookshelf-view.ts`, `src/epub-cover.ts` | Vault EPUB discovery, cover extraction, filtering, sorting, and book management |
+| Reading sync | `src/reading-sync.ts`, `src/reading-sync-model.ts` | Per-device sync files, merge rules, and applying other devices' reading data |
 | EPUB pipeline | `src/epub-loader.ts`, `src/epub-binary.ts`, `src/foliate-*.ts`, `src/blob-url-*.ts` | Load publications, normalize blob-backed resources, and adapt Foliate behavior for Obsidian desktop/mobile runtimes |
 | Safety boundary | `src/sanitizer.ts` | Remove executable or remote publication content before it enters the rendered document |
 | Layout and appearance | `src/reader-layout.ts`, `src/reader-style.ts`, `src/settings-ui.ts`, `styles.css` | Reader layout, publication CSS, user settings, and the plugin design system |
@@ -42,6 +43,15 @@ Keep modules focused. `main.ts` coordinates Obsidian integration; it should not 
 4. The store flushes pending changes at lifecycle boundaries where data loss would otherwise be possible.
 
 The schema is defined in `src/types.ts`. Any schema change must include normalization or migration behavior and tests for old or malformed data.
+
+### Sync reading data across devices
+
+1. Each device writes only its own `<sync folder>/<device id>.json`, holding its view of the merged reading data.
+2. Local edits are detected by diffing the store against the last synced state and recorded before any other device's data is merged.
+3. Other devices' files are merged when they arrive, the result is applied to the store in place, and open readers and bookshelves refresh.
+4. `data.json` is flushed before the device's sync file is written.
+
+See [`docs/design-docs/systems/reading-sync.md`](docs/design-docs/systems/reading-sync.md) for the merge rules and ordering invariants.
 
 ### Arbitrate selection and navigation
 

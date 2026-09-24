@@ -17,6 +17,7 @@ Omni Book Reader is a local-first EPUB 2/3 reading workbench inside Obsidian. It
 | Exports | Produce managed Highlight/Note Markdown documents and chapter Markdown with local assets while preserving user content outside managed blocks |
 | Reading history | Track active session time, furthest progress, completion, estimated remaining time, and recent books |
 | Integration | Open `.epub` files as an Obsidian view and reopen exact locations through `obsidian://omni-book-reader` CFI links |
+| Sync | Keep reading position, highlights, notes, bookmarks, reading time, and finished state in sync across devices through per-device files in the vault, without losing edits made on several devices between syncs |
 
 The [`README.md`](../../README.md) is the user-facing feature overview. When behavior changes, update the specification first or in the same change, then keep the README aligned.
 
