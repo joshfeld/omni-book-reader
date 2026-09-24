@@ -69,7 +69,7 @@ Managed-block preservation is a product invariant. Changes to marker handling re
 - Keep publication content isolated from the plugin shell and Obsidian APIs.
 - Preserve user-controlled typography, zoom/reflow, selection, and accessibility behavior.
 - Treat native selection as a navigation lock: taps, swipes, keys, wheels, and edge-turn assistance must not accidentally move the viewport while selection is active or settling.
-- User-facing UI changes must follow the Botanical / Organic Serif guidance in `AGENTS.md`.
+- User-facing UI changes must follow the Obsidian-native interface guidelines in `AGENTS.md`.
 
 ## Build, test, and release
 

@@ -1,4 +1,4 @@
-# Project UI Design Skill: Botanical / Organic Serif
+# Project Guide
 
 ## Project harness
 
@@ -14,45 +14,39 @@ Use the repository documents as the source of truth for planned work:
 
 Generated facts should be produced from code whenever practical. If generated documentation is added later, place it under `docs/generated/` and document the generator command beside it.
 
-Apply this skill whenever adding, removing, redesigning, or materially changing any user-facing interface, including settings, reader controls, panels, dialogs, empty states, and responsive layouts. The outcome must feel like one coherent Botanical / Organic Serif product, not a collection of generic controls.
+## User interface guidelines
 
-## 1. Inspect before designing
+Apply these guidelines whenever adding, removing, or changing any user-facing interface, including settings, reader controls, panels, dialogs, empty states, and responsive layouts. The plugin should look and behave like a native part of Obsidian: plain, functional, and consistent with the user's active theme.
 
-Before changing UI code:
+### 1. Inspect before changing
 
 1. Identify the affected view, its responsive behaviour, existing CSS custom properties, class naming, and nearby UI patterns.
-2. Preserve Obsidian integration and existing user theme variables where they are intentionally used. Add project-level tokens instead of scattering literal values or introducing a competing component system.
-3. Keep the change focused. Reuse or extend existing components and selectors before creating one-off styling.
-4. For a large visual change, state a short implementation plan before coding. Clarify only when the requested intent or scope is genuinely ambiguous.
+2. Reuse or extend existing components and selectors before creating one-off styling. Keep changes focused.
+3. For a large visual change, state a short implementation plan before coding.
 
-## 2. Theme direction
+### 2. Visual style
 
-Create a calm, crafted, editorial experience: botanical garden warmth, ceramic tactility, and refined typography. Prefer quiet sophistication over high-contrast, sharp, or generic "tech" UI.
+- Use Obsidian's theme variables for all interface colors: `--background-primary`, `--background-secondary`, `--background-modifier-border`, `--background-modifier-hover`, `--text-normal`, `--text-muted`, `--interactive-accent`, and related variables. Do not introduce a custom palette or hardcoded interface colors; the user's light/dark theme must apply automatically. (Highlight annotation colors and the explicit Light/Dark/Sepia reading themes are content choices, not interface styling.)
+- Use `--font-interface` for interface text. Do not add decorative or display fonts, and never override the reader's chosen book font.
+- Use Obsidian's standard radii (`--radius-s`, `--radius-m`) and shadows (`--shadow-s`, `--shadow-l`) only where elevation is functional (popovers, drawers, modals). Cards and list items stay flat.
+- Avoid decorative effects: no gradients, textures or noise overlays, frosted-glass blur, hover lifts, staggered layouts, uppercase wide-tracked labels, or decorative italics.
+- Prefer Obsidian's native controls (`Setting`, `Modal`, `Menu`, `setIcon`, `mod-cta`, `mod-warning`) over custom-styled equivalents.
 
-- Use warm off-white surfaces, deep forest text, muted sage accents, soft clay secondary surfaces, subtle stone borders, and terracotta only for intentional interactive emphasis.
-- Prefer CSS tokens. The baseline palette is: `#F9F8F4` background, `#2D3A31` foreground, `#8C9A84` sage, `#DCCFC2` clay, `#E6E2DA` border, and `#C27B66` terracotta. Adapt these through the plugin's variables so contrast and host-theme compatibility remain sound.
-- Use elegant serif display typography only for headings, feature moments, and optional italic emphasis. Keep reading content and dense controls in an accessible, highly legible sans-serif; never force a decorative font into book text.
-- Prefer soft, organic geometry: 24px (`rounded-3xl`) cards, pill controls, and arch/blob imagery where imagery exists. Avoid sharp corners unless they convey an existing reader affordance.
-- Give layouts room to breathe: spacious section rhythm, clear groups, and generous but purposeful gaps. Use asymmetry or staggered cards only where it improves hierarchy; do not disrupt scanning in data-dense reader UI.
+### 3. Interaction and motion
 
-## 3. Components and interaction
+- Maintain at least 44px touch targets on mobile.
+- Keep transitions short and functional (showing/hiding controls, opening panels). Respect `prefers-reduced-motion`; avoid continuous or decorative animations in the reader.
+- Never remove focus indication.
 
-- Buttons: pill-shaped; primary uses forest with light text; secondary is transparent with a sage border. Use compact uppercase/wide-tracked labels only when the available width and localization permit it. Maintain at least 44px touch targets.
-- Cards and popovers: use white or pale clay surfaces, delicate borders, 24px corners, and diffused forest-tinted shadows. Hover lifts are subtle (`translateY(-1px/-2px)`) and never move surrounding layout.
-- Inputs: use understated filled-pill or underlined treatments. On focus, use a visible 2px sage focus ring with offset; never remove focus indication.
-- Icons: retain the project's icon approach; prefer thin, forest/sage strokes and soft circular containers over heavy boxed icons.
-- Motion: use graceful ease-out transitions: ~300ms for color/button feedback, ~500ms for cards, and 700ms+ only for decorative imagery. Respect `prefers-reduced-motion`; avoid continuous or distracting reader animations.
-- Decorative paper grain may be added once at the app-level as a non-interactive, low-opacity (`~0.015`) overlay. Do not add duplicate overlays per view, obscure text, intercept pointers, or compromise performance.
-
-## 4. Responsive and accessible completion checks
+### 4. Responsive and accessible completion checks
 
 - Start mobile-first. Collapse multi-column groups cleanly, remove desktop-only stagger offsets on small screens, and prevent horizontal overflow.
 - Keep reader text comfortable: preserve user font and reading settings, adequate line height, contrast, selection behaviour, and zoom/reflow compatibility.
 - Use semantic controls, keyboard access, visible focus states, labels for icon-only buttons, and appropriate ARIA attributes when native semantics are insufficient.
 - Test the affected view at narrow and wide widths, with keyboard navigation, and with `prefers-reduced-motion` enabled. Run relevant existing tests or build checks after UI changes.
 
-## 5. Maintainability rules
+### 5. Maintainability rules
 
-- Centralize recurring colors, spacing, radii, shadows, and timings as CSS custom properties or existing shared utilities.
-- Match the repository's TypeScript, DOM, and CSS conventions. Do not add React, Tailwind, external fonts, or a UI library merely to achieve this visual style.
-- Keep changes responsive, accessible, and performant. Use images and texture assets sparingly; avoid excessive filters, layers, and animation work in the reader.
+- Take colors, radii, and shadows from Obsidian's theme variables; centralize any recurring plugin-specific spacing or timings as CSS custom properties.
+- Match the repository's TypeScript, DOM, and CSS conventions. Do not add React, Tailwind, external fonts, or a UI library.
+- Keep changes responsive, accessible, and performant. Avoid filters, extra layers, and animation work in the reader.

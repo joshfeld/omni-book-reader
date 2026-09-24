@@ -14,11 +14,20 @@ export function buildPublicationCss(settings: ReaderSettings): string {
     const value = hostStyle.getPropertyValue(name).trim();
     return value && !value.includes("var(") ? value : fallback;
   };
-  const colors = theme === "dark"
-      ? { background: "#19231d", foreground: "#e6e8e1", link: "#a9b7a1", selection: "rgba(169, 183, 161, .30)" }
+  const palette = theme === "dark"
+      ? { background: "#1e1e1e", foreground: "#dcddde", link: "#8ab4f8", selection: "rgba(138, 180, 248, .30)" }
     : theme === "sepia"
       ? { background: "#f3ead7", foreground: "#44382a", link: "#76591f", selection: "rgba(204, 164, 82, .35)" }
-      : { background: "#f9f8f4", foreground: "#2d3a31", link: "#6f806a", selection: "rgba(140, 154, 132, .30)" };
+      : { background: "#ffffff", foreground: "#222222", link: "#1a5fb4", selection: "rgba(26, 95, 180, .25)" };
+  // "Follow Obsidian" uses the active theme's own colors so the page matches the rest of the app.
+  const colors = settings.theme === "auto"
+    ? {
+      background: hostValue("--background-primary", palette.background),
+      foreground: hostValue("--text-normal", palette.foreground),
+      link: hostValue("--text-accent", palette.link),
+      selection: hostValue("--text-selection", palette.selection),
+    }
+    : palette;
   const obsidianFont = hostStyle.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
   const fontFamily = settings.font === "obsidian"
     ? obsidianFont
