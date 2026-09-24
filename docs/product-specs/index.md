@@ -29,7 +29,7 @@ The [`README.md`](../../README.md) is the user-facing feature overview. When beh
 - Reader settings preserve legibility, selection, zoom/reflow, keyboard access, and mobile use.
 - On mobile, a native or pending text selection owns navigation until it is saved or cancelled; selection-handle drags in any direction never turn paginated pages or repeat page turns, clicking outside the selection cancels it, and desktop mouse edge-assisted selection remains available within a chapter.
 - Android vertical selection-handle drags remain on the current page even away from horizontal edges and after release; dependency-level selection-change navigation must obey this constraint too. Cross-page passages are highlighted in separate selections.
-- Interface changes remain coherent with the Botanical / Organic Serif system in [`../../AGENTS.md`](../../AGENTS.md).
+- Interface changes follow the Obsidian-native interface guidelines in [`../../AGENTS.md`](../../AGENTS.md): theme variables, no custom palette or decorative effects.
 - Production releases contain a non-empty `main.js`, `manifest.json`, and `styles.css` with consistent versions.
 
 ## Acceptance baseline

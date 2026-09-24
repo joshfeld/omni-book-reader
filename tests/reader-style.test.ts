@@ -16,8 +16,17 @@ describe("publication typography", () => {
     expect(css).toContain("--pavel-reader-letter-spacing: 0.01em");
     expect(css).toContain("--pavel-reader-paragraph-spacing: 0.65em");
     expect(css).toContain("text-rendering: optimizeLegibility");
-    expect(css).toContain("background: #f9f8f4 !important");
-    expect(css).toContain("color: #2d3a31 !important");
+    expect(css).toContain("background: #ffffff !important");
+    expect(css).toContain("color: #222222 !important");
+  });
+
+  it("uses the active Obsidian theme colors when following Obsidian", () => {
+    document.body.style.setProperty("--background-primary", "#101010");
+    document.body.style.setProperty("--text-normal", "#eeeeee");
+    const css = buildPublicationCss({ ...DEFAULT_SETTINGS, theme: "auto" });
+
+    expect(css).toContain("background: #101010 !important");
+    expect(css).toContain("color: #eeeeee !important");
   });
 
   it("keeps publisher font families when original-book mode is selected", () => {

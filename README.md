@@ -4,7 +4,7 @@ An all-in-one, local-first EPUB 2/3 reading workbench for Obsidian. It supports 
 
 The default reading typography follows Obsidian's configured text font and font size, then applies a comfortable long-form reading rhythm: 1.7 line height, 0.01em letter spacing, 0.65em paragraph spacing, a 720px text measure, and 48px page margins. Publisher, serif, and sans-serif font modes remain available. The typography panel also includes a one-click comfortable-default reset.
 
-The plugin shell uses a Botanical / Organic Serif design system: warm alabaster paper, deep forest text, sage and terracotta accents, editorial serif headings, soft clay cards, pill controls, diffused elevation, and a scoped paper-grain texture. A matching dark botanical palette, reduced-motion behavior, keyboard focus rings, and mobile drawer layout are included. The design remains local-first and does not download web fonts or other interface assets.
+The plugin interface uses a plain, functional style built on Obsidian's own theme variables, so it follows your active light or dark theme, interface font, and accent color. Reduced-motion behavior, keyboard focus rings, and a mobile drawer layout are included. The plugin does not download web fonts or other interface assets.
 
 Click a highlight in the book, or use its note button in the reader sidebar, to add or edit a note. The plugin keeps a generated Highlight/Note Markdown pair under `<EPUB folder>/<book name>/`, using filenames such as `<book name>-Highlight-2026-08-01.md`. These documents are synchronized whenever highlights or notes change. Use the sidebar export buttons or the command palette to force a refresh and open the exported Markdown document.
 
