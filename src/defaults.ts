@@ -1,7 +1,6 @@
 import type { ReaderData, ReaderSettings } from "./types";
 
 export const DEFAULT_SETTINGS: ReaderSettings = {
-  interfaceLanguage: "zh",
   theme: "auto",
   layout: "paginated",
   tapToTurnPages: true,
@@ -33,7 +32,6 @@ const layouts = new Set(["paginated", "scrolled"]);
 const fonts = new Set(["obsidian", "publisher", "serif", "sans"]);
 const widthModes = new Set(["standard", "wide", "full", "edge"]);
 const exportTemplates = new Set(["classic", "compact", "callout", "custom"]);
-const interfaceLanguages = new Set(["zh", "en"]);
 const bookshelfDisplayModes = new Set(["list", "grid", "covers"]);
 const bookshelfFilters = new Set(["all", "reading", "finished", "reading-list"]);
 const bookshelfSorts = new Set(["recent", "title", "progress"]);
@@ -51,9 +49,6 @@ const clamp = (value: unknown, min: number, max: number, fallback: number): numb
 export function normalizeSettings(value: unknown): ReaderSettings {
   const input = value && typeof value === "object" ? value as Partial<ReaderSettings> : {};
   return {
-    interfaceLanguage: interfaceLanguages.has(String(input.interfaceLanguage))
-      ? input.interfaceLanguage as ReaderSettings["interfaceLanguage"]
-      : DEFAULT_SETTINGS.interfaceLanguage,
     theme: themes.has(String(input.theme)) ? input.theme as ReaderSettings["theme"] : DEFAULT_SETTINGS.theme,
     layout: layouts.has(String(input.layout)) ? input.layout as ReaderSettings["layout"] : DEFAULT_SETTINGS.layout,
     tapToTurnPages: typeof input.tapToTurnPages === "boolean"

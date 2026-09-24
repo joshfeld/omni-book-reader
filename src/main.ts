@@ -1,7 +1,6 @@
 import { App, Menu, Modal, Notice, Plugin, TFile, normalizePath, setIcon, type Command } from "obsidian";
 import { AnnotationDocumentService, type AnnotationDocumentInput } from "./annotation-documents";
 import { OMNI_BOOK_READER_BOOKSHELF_VIEW_TYPE, OmniBookReaderBookshelfView } from "./bookshelf-view";
-import { uiLocale, uiText } from "./i18n";
 import { loadLegacyPluginData } from "./legacy-plugin-data";
 import { OMNI_BOOK_READER_VIEW_TYPE, OmniBookReaderView } from "./reader-view";
 import { OmniBookReaderSettingTab } from "./settings-ui";
@@ -20,15 +19,13 @@ class RecentReadingModal extends Modal {
 
   onOpen(): void {
     this.modalEl.addClass("omni-book-reader-recent-modal");
-    const language = this.store.settings.interfaceLanguage;
-    const t = (zh: string, en: string): string => uiText(language, zh, en);
-    this.titleEl.setText(t("最近阅读", "Recent reading"));
+    this.titleEl.setText("Recent reading");
     const books = Object.entries(this.store.snapshot.books)
       .filter(([, state]) => Boolean(state.readingStats?.lastOpenedAt))
       .sort(([, left], [, right]) => (right.readingStats?.lastOpenedAt ?? 0) - (left.readingStats?.lastOpenedAt ?? 0))
       .slice(0, 20);
     if (!books.length) {
-      this.contentEl.createDiv({ cls: "omni-book-reader-empty", text: t("还没有阅读记录", "No reading history yet") });
+      this.contentEl.createDiv({ cls: "omni-book-reader-empty", text: "No reading history yet" });
       return;
     }
     const list = this.contentEl.createDiv({ cls: "omni-book-reader-recent-list" });
@@ -42,7 +39,7 @@ class RecentReadingModal extends Modal {
       text.createSpan({ cls: "omni-book-reader-recent-title", text: file.basename });
       text.createSpan({
         cls: "omni-book-reader-recent-meta",
-        text: `${progressText(state.position?.fraction ?? state.readingStats?.furthestFraction ?? 0)} · ${new Date(state.readingStats!.lastOpenedAt).toLocaleString(uiLocale(language))}`,
+        text: `${progressText(state.position?.fraction ?? state.readingStats?.furthestFraction ?? 0)} · ${new Date(state.readingStats!.lastOpenedAt).toLocaleString("en-US")}`,
       });
       button.addEventListener("click", () => {
         void this.app.workspace.getLeaf(true).openFile(file);
@@ -59,8 +56,6 @@ class RecentReadingModal extends Modal {
 export default class OmniBookReaderPlugin extends Plugin {
   store!: ReaderDataStore;
   private annotationDocuments!: AnnotationDocumentService;
-  private commandLabels: Array<{ command: Command; zh: string; en: string }> = [];
-  private bookshelfRibbonEl: HTMLElement | null = null;
 
   async onload(): Promise<void> {
     this.store = new ReaderDataStore(this, (error) => {
@@ -78,15 +73,11 @@ export default class OmniBookReaderPlugin extends Plugin {
       );
       if (legacyData.length && this.store.mergeLegacyData(legacyData)) {
         await this.store.flush();
-        new Notice(this.text(
-          "已从旧插件目录恢复阅读进度、高亮和统计数据",
-          "Recovered reading progress, highlights, and statistics from a previous plugin folder.",
-        ));
+        new Notice("Recovered reading progress, highlights, and statistics from a previous plugin folder.");
       }
     } catch (error) {
       console.error("[Omni Book Reader] Could not recover data from a previous plugin folder", error);
     }
-    const t = (zh: string, en: string): string => this.text(zh, en);
     this.annotationDocuments = new AnnotationDocumentService(this.app.vault);
     try {
       await this.annotationDocuments.migrateLegacyProtocolLinks(
@@ -102,7 +93,7 @@ export default class OmniBookReaderPlugin extends Plugin {
       this.registerExtensions(["epub"], OMNI_BOOK_READER_VIEW_TYPE);
     } catch (error) {
       console.error("[Omni Book Reader] Could not register .epub extension", error);
-      new Notice(t("Omni Book Reader 无法接管 .epub：请停用其他 EPUB 阅读插件后重载 Obsidian", "Omni Book Reader could not register .epub files. Disable other EPUB reader plugins and reload Obsidian."));
+      new Notice("Omni Book Reader could not register .epub files. Disable other EPUB reader plugins and reload Obsidian.");
     }
 
     this.registerObsidianProtocolHandler("omni-book-reader", (params) => {
@@ -137,18 +128,18 @@ export default class OmniBookReaderPlugin extends Plugin {
         if (!checking && available) void this.openEpub(file);
         return available;
       },
-    }, "Omni Book Reader：打开当前 EPUB", "Omni Book Reader: Open current EPUB");
+    }, "Omni Book Reader: Open current EPUB");
 
     this.addUiCommand({
       id: "open-epub-bookshelf",
       callback: () => void this.openBookshelf(),
-    }, "Omni Book Reader：打开书架", "Omni Book Reader: Open bookshelf");
-    this.bookshelfRibbonEl = this.addRibbonIcon("library", t("打开 Omni Book Reader 书架", "Open Omni Book Reader bookshelf"), () => void this.openBookshelf());
+    }, "Omni Book Reader: Open bookshelf");
+    this.addRibbonIcon("library", "Open Omni Book Reader bookshelf", () => void this.openBookshelf());
 
     this.addUiCommand({
       id: "open-recent-epub",
       callback: () => new RecentReadingModal(this.app, this.store).open(),
-    }, "Omni Book Reader：最近阅读与继续阅读", "Omni Book Reader: Recent and continue reading");
+    }, "Omni Book Reader: Recent and continue reading");
 
     this.addUiCommand({
       id: "toggle-reader-sidebar",
@@ -157,7 +148,7 @@ export default class OmniBookReaderPlugin extends Plugin {
         if (!checking) view?.toggleSidebar();
         return Boolean(view);
       },
-    }, "Omni Book Reader：切换阅读侧栏", "Omni Book Reader: Toggle reader sidebar");
+    }, "Omni Book Reader: Toggle reader sidebar");
 
     this.addUiCommand({
       id: "toggle-current-bookmark",
@@ -166,7 +157,7 @@ export default class OmniBookReaderPlugin extends Plugin {
         if (!checking) view?.toggleBookmark();
         return Boolean(view);
       },
-    }, "Omni Book Reader：添加/移除当前位置书签", "Omni Book Reader: Add or remove bookmark here");
+    }, "Omni Book Reader: Add or remove bookmark here");
 
     this.addUiCommand({
       id: "export-current-highlights",
@@ -175,7 +166,7 @@ export default class OmniBookReaderPlugin extends Plugin {
         if (!checking && view) void view.exportAnnotations("highlights");
         return Boolean(view);
       },
-    }, "Omni Book Reader：导出当前 EPUB 高亮摘抄", "Omni Book Reader: Export highlights from current EPUB");
+    }, "Omni Book Reader: Export highlights from current EPUB");
 
     this.addUiCommand({
       id: "export-current-notes",
@@ -184,7 +175,7 @@ export default class OmniBookReaderPlugin extends Plugin {
         if (!checking && view) void view.exportAnnotations("notes");
         return Boolean(view);
       },
-    }, "Omni Book Reader：导出当前 EPUB 笔记", "Omni Book Reader: Export notes from current EPUB");
+    }, "Omni Book Reader: Export notes from current EPUB");
 
     this.addUiCommand({
       id: "export-current-chapter",
@@ -193,7 +184,7 @@ export default class OmniBookReaderPlugin extends Plugin {
         if (!checking && view) void view.exportCurrentChapter();
         return Boolean(view);
       },
-    }, "Omni Book Reader：导出当前 EPUB 章节为 Markdown", "Omni Book Reader: Export current EPUB chapter as Markdown");
+    }, "Omni Book Reader: Export current EPUB chapter as Markdown");
 
     this.addUiCommand({
       id: "toggle-focus-paragraph",
@@ -202,7 +193,7 @@ export default class OmniBookReaderPlugin extends Plugin {
         if (!checking) void view?.toggleFocusMode();
         return Boolean(view);
       },
-    }, "Omni Book Reader：切换沉浸式阅读", "Omni Book Reader: Toggle immersive reading");
+    }, "Omni Book Reader: Toggle immersive reading");
 
     this.addUiCommand({
       id: "show-reading-stats",
@@ -211,7 +202,7 @@ export default class OmniBookReaderPlugin extends Plugin {
         if (!checking) view?.openReadingStats();
         return Boolean(view);
       },
-    }, "Omni Book Reader：显示阅读统计", "Omni Book Reader: Show reading statistics");
+    }, "Omni Book Reader: Show reading statistics");
 
     this.addUiCommand({
       id: "show-reader-tutorial",
@@ -220,7 +211,7 @@ export default class OmniBookReaderPlugin extends Plugin {
         if (!checking) view?.openTutorial();
         return Boolean(view);
       },
-    }, "Omni Book Reader：重新打开阅读引导", "Omni Book Reader: Reopen reader tutorial");
+    }, "Omni Book Reader: Reopen reader tutorial");
 
     this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
       if (file instanceof TFile && file.extension.toLowerCase() === "epub") {
@@ -234,8 +225,8 @@ export default class OmniBookReaderPlugin extends Plugin {
       menu.addSeparator();
       menu.addItem((item) => item
         .setTitle(state?.hiddenFromBookshelf
-          ? this.text("Omni Book Reader：加入书架", "Omni Book Reader: Add to bookshelf")
-          : this.text("Omni Book Reader：从书架中移除", "Omni Book Reader: Remove from bookshelf"))
+          ? "Omni Book Reader: Add to bookshelf"
+          : "Omni Book Reader: Remove from bookshelf")
         .setIcon(state?.hiddenFromBookshelf ? "library-big" : "eye-off")
         .onClick(() => {
           const book = this.store.ensureBook(file.path, { size: file.stat.size, mtime: file.stat.mtime });
@@ -243,8 +234,8 @@ export default class OmniBookReaderPlugin extends Plugin {
           this.store.markChanged(0);
           this.refreshBookshelves();
           new Notice(book.hiddenFromBookshelf
-            ? this.text("已从 Omni Book Reader 书架中移除", "Removed from the Omni Book Reader bookshelf")
-            : this.text("已加入 Omni Book Reader 书架", "Added to the Omni Book Reader bookshelf"));
+            ? "Removed from the Omni Book Reader bookshelf"
+            : "Added to the Omni Book Reader bookshelf");
         }));
     }));
 
@@ -265,21 +256,15 @@ export default class OmniBookReaderPlugin extends Plugin {
   }
 
   updateReaderSettings(patch: Partial<ReaderSettings>): void {
-    const languageChanged = patch.interfaceLanguage !== undefined
-      && patch.interfaceLanguage !== this.store.settings.interfaceLanguage;
     this.store.updateSettings(patch);
-    const bookshelfChanged = languageChanged || patch.bookshelfDisplayMode !== undefined
+    const bookshelfChanged = patch.bookshelfDisplayMode !== undefined
       || patch.bookshelfFilter !== undefined || patch.bookshelfSort !== undefined;
     if (bookshelfChanged) {
       this.refreshBookshelves();
     }
-    if (languageChanged) {
-      this.refreshRegisteredLabels();
-    }
     for (const leaf of this.app.workspace.getLeavesOfType(OMNI_BOOK_READER_VIEW_TYPE)) {
       if (leaf.view instanceof OmniBookReaderView) {
-        if (languageChanged) leaf.view.refreshLanguage();
-        else leaf.view.applySettings();
+        leaf.view.applySettings();
       }
     }
   }
@@ -318,28 +303,28 @@ export default class OmniBookReaderPlugin extends Plugin {
 
   private async openProtocolLocation(pathValue: string | undefined, cfiValue: string | undefined, vaultValue: string | undefined): Promise<void> {
     if (vaultValue && vaultValue !== this.app.vault.getName()) {
-      new Notice(this.text(`CFI 链接属于其他 Vault：${vaultValue}`, `This CFI link belongs to another Vault: ${vaultValue}`));
+      new Notice(`This CFI link belongs to another Vault: ${vaultValue}`);
       return;
     }
     const path = normalizeVaultPath(pathValue ?? "");
     const cfi = String(cfiValue ?? "").trim();
     const file = this.app.vault.getAbstractFileByPath(path);
     if (!(file instanceof TFile) || file.extension.toLowerCase() !== "epub") {
-      new Notice(this.text("CFI 链接中的 EPUB 文件不存在", "The EPUB in this CFI link does not exist"));
+      new Notice("The EPUB in this CFI link does not exist");
       return;
     }
     if (!isValidCfi(cfi)) {
-      new Notice(this.text("CFI 链接中的阅读位置无效", "The reading position in this CFI link is invalid"));
+      new Notice("The reading position in this CFI link is invalid");
       return;
     }
     try {
       const leaf = this.app.workspace.getLeaf(true);
       await leaf.openFile(file);
       if (leaf.view instanceof OmniBookReaderView) await leaf.view.navigateToCfi(cfi);
-      else new Notice(this.text("无法创建 EPUB 阅读视图", "Could not create the EPUB reader view"));
+      else new Notice("Could not create the EPUB reader view");
     } catch (error) {
       console.error("[Omni Book Reader] Failed to open CFI link", error);
-      new Notice(this.text("打开 EPUB 原文位置失败", "Could not open the EPUB source location"));
+      new Notice("Could not open the EPUB source location");
     }
   }
 
@@ -348,20 +333,7 @@ export default class OmniBookReaderPlugin extends Plugin {
     return view ?? null;
   }
 
-  private text(zh: string, en: string): string {
-    return uiText(this.store.settings.interfaceLanguage, zh, en);
-  }
-
-  private addUiCommand(command: Omit<Command, "name">, zh: string, en: string): void {
-    const registered = this.addCommand({ ...command, name: this.text(zh, en) });
-    this.commandLabels.push({ command: registered, zh, en });
-  }
-
-  private refreshRegisteredLabels(): void {
-    for (const entry of this.commandLabels) entry.command.name = this.text(entry.zh, entry.en);
-    if (!this.bookshelfRibbonEl) return;
-    const label = this.text("打开 Omni Book Reader 书架", "Open Omni Book Reader bookshelf");
-    this.bookshelfRibbonEl.setAttribute("aria-label", label);
-    this.bookshelfRibbonEl.setAttribute("title", label);
+  private addUiCommand(command: Omit<Command, "name">, name: string): void {
+    this.addCommand({ ...command, name });
   }
 }

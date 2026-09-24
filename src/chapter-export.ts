@@ -33,7 +33,7 @@ async function block(node: Element, imagePath: (image: Element) => Promise<strin
   if (node.matches("script,style,iframe,object,embed,form,nav")) return "";
   if (node.matches("img")) {
     const path = await imagePath(node);
-    return path ? `![${escapeMarkdown(node.getAttribute("alt") || "书内图片")}](${encodeURI(path)})\n\n` : "";
+    return path ? `![${escapeMarkdown(node.getAttribute("alt") || "Book image")}](${encodeURI(path)})\n\n` : "";
   }
   const children = async (): Promise<string> => {
     let output = "";
@@ -54,7 +54,7 @@ function merge(existing: string, generated: string): string {
   const start = existing.indexOf(START);
   const end = existing.indexOf(END);
   if ((start < 0) !== (end < 0) || (start >= 0 && (end < start || existing.indexOf(START, start + START.length) >= 0))) {
-    throw new Error("章节导出文档的受控区块标记异常");
+    throw new Error("The managed-block markers in the chapter export document are malformed.");
   }
   if (start >= 0) return `${existing.slice(0, start)}${blockText}${existing.slice(end + END.length)}`;
   return existing.trim() ? `${existing.trimEnd()}\n\n${blockText}\n` : `${blockText}\n`;
@@ -74,8 +74,8 @@ export interface ChapterExportInput {
 
 export async function exportChapterMarkdown(input: ChapterExportInput): Promise<string> {
   const parent = input.sourceFile.parent?.path ?? "";
-  const folder = normalizePath(`${parent}/${input.sourceFile.basename}/章节导出`);
-  const chapterName = safeFileName(input.chapter, `章节-${input.sectionIndex + 1}`);
+  const folder = normalizePath(`${parent}/${input.sourceFile.basename}/Chapter exports`);
+  const chapterName = safeFileName(input.chapter, `Chapter-${input.sectionIndex + 1}`);
   const assetFolder = normalizePath(`${folder}/assets`);
   await ensureVaultFolder(input.vault, assetFolder);
   let imageIndex = 0;
@@ -97,13 +97,13 @@ export async function exportChapterMarkdown(input: ChapterExportInput): Promise<
     .sort((left, right) => left.createdAt - right.createdAt)
     .map((item) => {
       const link = buildCfiLink(input.vaultName, input.sourceFile.path, item.cfi);
-      return `> ${item.text.replace(/\r?\n/g, "\n> ")}\n\n${item.note ? `笔记：${item.note}\n\n` : ""}[回到原文](${link})`;
+      return `> ${item.text.replace(/\r?\n/g, "\n> ")}\n\n${item.note ? `Note: ${item.note}\n\n` : ""}[Open in book](${link})`;
     }).join("\n\n---\n\n");
   const generated = [
     `# ${input.chapter}`,
-    `书籍：[[${input.sourceFile.path}]]${input.author ? `${MARKDOWN_HARD_BREAK}作者：${input.author}` : ""}`,
+    `Book: [[${input.sourceFile.path}]]${input.author ? `${MARKDOWN_HARD_BREAK}Author: ${input.author}` : ""}`,
     body.trim(),
-    annotations ? `## 当前章节标注\n\n${annotations}` : "",
+    annotations ? `## Chapter annotations\n\n${annotations}` : "",
   ].filter(Boolean).join("\n\n");
   const outputPath = normalizePath(`${folder}/${chapterName}.md`);
   const existing = input.vault.getAbstractFileByPath(outputPath);
@@ -111,7 +111,7 @@ export async function exportChapterMarkdown(input: ChapterExportInput): Promise<
     const current = await input.vault.read(existing);
     const next = merge(current, generated);
     if (next !== current) await input.vault.modify(existing, next);
-  } else if (existing) throw new Error(`章节导出路径不是文件：${outputPath}`);
+  } else if (existing) throw new Error(`The chapter export path is not a file: ${outputPath}`);
   else await input.vault.create(outputPath, merge("", generated));
   return outputPath;
 }

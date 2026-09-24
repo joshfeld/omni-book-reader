@@ -1,61 +1,61 @@
-# 阅读体验优化访谈
+# Reading Experience Discovery Interview
 
-Status: Android 选区误翻页修复范围已确认；其他体验建议仍待讨论
+Status: Scope of the Android accidental page-turn-during-selection fix is confirmed; other experience suggestions are still under discussion
 Date: 2026-09-23
 
-## 证据范围
+## Evidence scope
 
-基于当前工作区产品规范及源码的静态检查，包含已有未提交改动；尚未进行 Obsidian 桌面或移动设备实测。下列条目是候选优化，不代表已确认的用户痛点或实施决策。
+Based on static review of the product specifications and source in the current workspace, including existing uncommitted changes. No hands-on testing has been done yet in Obsidian desktop or on mobile devices. The items below are candidate improvements, not confirmed user pain points or implementation decisions.
 
-## 候选问题
+## Candidate issues
 
-| 场景 | 代码事实 | 候选改进 |
+| Scenario | Code facts | Candidate improvement |
 | --- | --- | --- |
-| 临时搜索后继续阅读 | `src/reader-view.ts` 的 `renderSearchResult` 直接调用 `reader.select`，移动端关闭侧栏；在插件源码中未找到跳转历史或返回原位置入口 | 提供回到跳转前阅读位置的操作；需确认与阅读进度的关系 |
-| 误删批注或书签 | `deleteHighlight` 删除记录并同步文档；`renderBookmarkItem` 的删除操作直接移除书签，均无撤销入口 | 短时撤销；需进一步确定笔记及同步文档的恢复范围 |
-| 书架没有显示书籍 | `src/bookshelf-view.ts` 的 `renderBookList` 区分无匹配和 Vault 无 EPUB，但空态仅展示文字 | 提供清除筛选等下一步操作；无书时给出加入本地 EPUB 的指引 |
+| Continue reading after a quick search | `renderSearchResult` in `src/reader-view.ts` calls `reader.select` directly and closes the sidebar on mobile; no jump history or "return to previous position" entry point was found in the plugin source | Provide an action to return to the reading position before the jump; confirm how this interacts with reading progress |
+| Accidentally deleting an annotation or bookmark | `deleteHighlight` removes the record and syncs the documents; the delete action in `renderBookmarkItem` removes the bookmark directly; neither has an undo entry point | Short-lived undo; the recovery scope for notes and synced documents still needs to be decided |
+| Bookshelf shows no books | `renderBookList` in `src/bookshelf-view.ts` distinguishes "no matches" from "no EPUBs in the vault", but the empty state only shows text | Offer next steps such as clearing filters; when there are no books, explain how to add local EPUBs |
 
-## 已确认的使用场景
+## Confirmed usage scenarios
 
-- 用户主要在手机上使用；后续体验优化优先以手机操作和移动设备实测为依据。
-- 用户经常划线、写笔记；已报告选中文字、拖动选区时容易误翻页，作为首要调查问题。
-- 已确认设备系统为 Android；上下拖动选区手柄、未靠近左右边缘时也会误翻页。
-- 用户接受选字期间固定当前页、跨页内容分次划线，沿用既有选区导航锁设计。
-- 当前系统设计已要求移动端选区手柄拖动不得翻页；已有修复记录仍待 Android/iOS 真机验证。手机安装版本及翻页发生在松手前还是松手后尚未确认，不能据此判定当前源码的失败路径。
+- The user reads mainly on a phone; future experience improvements should be based primarily on phone interaction and on-device testing.
+- The user frequently highlights and writes notes, and has reported that selecting text or dragging a selection easily triggers an accidental page turn. This is the top investigation priority.
+- The device is confirmed to run Android; dragging a selection handle up or down triggers an accidental page turn even when not near the left or right edge.
+- The user accepts that the current page stays fixed during selection and that content spanning pages is highlighted in separate passes, following the existing selection navigation lock design.
+- The current system design already requires that dragging a mobile selection handle must not turn the page; the existing fix is still awaiting verification on real Android/iOS devices. The plugin version installed on the phone, and whether the page turn happens before or after the finger is lifted, are not yet confirmed, so they cannot be used to determine the failing path in the current source.
 
-## 第一轮待决策
+## Round one: open decisions
 
-1. 首要使用场景：已确认经常划线、写笔记。
-2. 优先验证设备：已确认手机。
-3. 首要痛点：已确认选字、拖动选区时误翻页。
+1. Primary usage scenario: confirmed as frequent highlighting and note-taking.
+2. Priority verification device: confirmed as phone.
+3. Top pain point: confirmed as accidental page turns while selecting text or dragging a selection.
 
-## 第二轮结论
+## Round two: conclusions
 
-1. 手机系统：Android。
-2. 触发动作：上下拖动选区手柄，无需靠近左右边缘。
-3. 跨页选字：用户接受固定当前页，分次划线。
+1. Phone OS: Android.
+2. Triggering action: dragging a selection handle up or down, without needing to be near the left or right edge.
+3. Cross-page selection: the user accepts keeping the current page fixed and highlighting in separate passes.
 
-## 验收方向
+## Acceptance criteria
 
-- 上下拖动任一选区手柄，正文保持当前页，选区仍能正常调整。
-- 同一手势松手时也不得触发补发翻页或连续翻页。
-- 保存或取消选区之后，正常翻页恢复。
-- 跨页内容分次划线，不通过拖动手柄触发自动翻页。
+- Dragging either selection handle up or down keeps the text on the current page, and the selection can still be adjusted normally.
+- Lifting the finger at the end of the same gesture must not trigger a deferred page turn or multiple page turns.
+- After the selection is saved or cancelled, normal page turning resumes.
+- Content spanning pages is highlighted in separate passes; dragging a handle does not trigger automatic page turns.
 
-## 本轮修复结论
+## Fix conclusions for this round
 
-- 用户批准排查并修复桌面选区翻页与底层触摸导航的干扰。
-- 已用安装依赖中的 Foliate 事件处理代码复现：触摸 pointerdown 进入其通用选区逻辑，selectionchange 可延迟直接调用 next/prev，绕过插件翻页锁，无需靠近左右边缘。
-- 移动端分页正文现在由捕获阶段拦截底层 selectionchange 自动导航，同时保留插件的选区读取与原生手柄操作；插件自身的边缘辅助翻页仅接受桌面鼠标。
-- 事件级回归由失败转为通过；Android 原生手柄尚待真机验收。详见[选区导航设计](systems/reader-selection-navigation.md)。
+- The user approved investigating and fixing interference between desktop selection page turns and the underlying touch navigation.
+- Reproduced using the Foliate event-handling code in the installed dependencies: a touch `pointerdown` enters Foliate's generic selection logic, and `selectionchange` can call `next`/`prev` directly after a delay, bypassing the plugin's page-turn lock, without needing to be near the left or right edge.
+- Paginated text on mobile now intercepts the underlying `selectionchange` auto-navigation in the capture phase, while preserving the plugin's selection reading and native handle behavior; the plugin's own edge-assisted page turning only accepts a desktop mouse.
+- The event-level regression test went from failing to passing; native Android handles still await on-device acceptance testing. See the [selection navigation design](systems/reader-selection-navigation.md) for details.
 
-## 真机复测需记录的信息
+## Information to record during on-device retesting
 
-- Android 手机上的实际插件版本；本地仓库 manifest 为 1.0.1，不能替代手机版本证据。
-- 翻页发生在手指仍按住时，还是松手后；是否连续翻多页。
+- The actual plugin version on the Android phone; the local repository manifest is 1.0.1, which is not a substitute for evidence of the version on the phone.
+- Whether the page turn happens while the finger is still down or after it is lifted, and whether multiple pages turn in a row.
 
-相关依据：[选区与导航约定](systems/reader-selection-navigation.md)、[已有修复及真机验证状态](../exec-plans/active/mobile-selection-navigation-lock.md)。
+Related references: [selection and navigation conventions](systems/reader-selection-navigation.md), [existing fix and on-device verification status](../exec-plans/active/mobile-selection-navigation-lock.md).
 
-## 文档约定
+## Documentation conventions
 
-沿用根目录 `CONTEXT.md` 的 Mobile selection gesture 和 Selection navigation lock 术语。本轮沿用既有交互约定，不新增 ADR；修复依据与机制记录在选区导航设计中。
+Uses the Mobile selection gesture and Selection navigation lock terminology from the root `CONTEXT.md`. This round follows the existing interaction conventions and adds no new ADR; the rationale and mechanism of the fix are recorded in the selection navigation design.

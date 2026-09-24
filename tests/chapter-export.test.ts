@@ -20,38 +20,38 @@ describe("chapter export", () => {
       parent: { path: "Books" },
     } as TFile;
     const doc = document.implementation.createHTMLDocument("chapter");
-    doc.body.innerHTML = "<h1>标题</h1><p>正文 <strong>重点</strong></p><script>alert(1)</script>";
+    doc.body.innerHTML = "<h1>Heading</h1><p>Body text <strong>key point</strong></p><script>alert(1)</script>";
 
     const path = await exportChapterMarkdown({
       vault,
       sourceFile,
       document: doc,
       sectionIndex: 0,
-      chapter: "第一章",
-      bookTitle: "测试书",
-      author: "作者",
+      chapter: "Chapter 1",
+      bookTitle: "Test Book",
+      author: "Author",
       vaultName: "Vault",
       highlights: [],
     });
     const exported = entries.get(path)!;
-    expect(exported.content).toContain("# 第一章");
-    expect(exported.content).toContain("正文 **重点**");
+    expect(exported.content).toContain("# Chapter 1");
+    expect(exported.content).toContain("Body text **key point**");
     expect(exported.content).not.toContain("alert(1)");
 
-    exported.content += "\n我的章节总结\n";
-    doc.body.innerHTML = "<p>更新正文</p>";
+    exported.content += "\nMy chapter summary\n";
+    doc.body.innerHTML = "<p>Updated body text</p>";
     await exportChapterMarkdown({
       vault,
       sourceFile,
       document: doc,
       sectionIndex: 0,
-      chapter: "第一章",
-      bookTitle: "测试书",
-      author: "作者",
+      chapter: "Chapter 1",
+      bookTitle: "Test Book",
+      author: "Author",
       vaultName: "Vault",
       highlights: [],
     });
-    expect(exported.content).toContain("更新正文");
-    expect(exported.content).toContain("我的章节总结");
+    expect(exported.content).toContain("Updated body text");
+    expect(exported.content).toContain("My chapter summary");
   });
 });

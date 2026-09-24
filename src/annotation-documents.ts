@@ -19,10 +19,10 @@ const COLOR_VALUES: Record<HighlightColor, string> = {
 };
 
 const STYLE_LABELS: Record<HighlightStyle, string> = {
-  highlight: "高亮",
-  underline: "下划线",
-  strikethrough: "删除线",
-  squiggly: "波浪线",
+  highlight: "Highlight",
+  underline: "Underline",
+  strikethrough: "Strikethrough",
+  squiggly: "Squiggly underline",
 };
 
 type AnnotationDocumentKind = "highlights" | "notes";
@@ -65,7 +65,7 @@ function quote(value: string): string {
 }
 
 function tagText(highlight: ReaderHighlight): string {
-  return highlight.tags.length ? `标签：${highlight.tags.join("、")}` : "";
+  return highlight.tags.length ? `Tags: ${highlight.tags.join(", ")}` : "";
 }
 
 function entryMetadata(highlight: ReaderHighlight, timestamp = highlight.createdAt): string {
@@ -97,7 +97,7 @@ export function buildCfiLink(vaultName: string, sourcePath: string, cfi: string)
 
 function sourceLink(highlight: ReaderHighlight, options: AnnotationRenderOptions): string {
   if (!options.sourcePath) return "";
-  return `[回到原文](${buildCfiLink(options.vaultName ?? "", options.sourcePath, highlight.cfi)})`;
+  return `[Open in book](${buildCfiLink(options.vaultName ?? "", options.sourcePath, highlight.cfi)})`;
 }
 
 function renderClassicEntries(
@@ -105,11 +105,11 @@ function renderClassicEntries(
   highlights: ReaderHighlight[],
   options: AnnotationRenderOptions,
 ): string {
-  if (!highlights.length) return kind === "notes" ? "_暂无笔记。_" : "_暂无高亮。_";
+  if (!highlights.length) return kind === "notes" ? "_No notes yet._" : "_No highlights yet._";
   const lines: string[] = [];
   for (const highlight of highlights) {
     const link = sourceLink(highlight, options);
-    lines.push(`### ${singleLine(highlight.chapter, "未命名章节")}`, "", quote(highlight.text), "");
+    lines.push(`### ${singleLine(highlight.chapter, "Untitled chapter")}`, "", quote(highlight.text), "");
     if (kind === "notes") lines.push(`**Note:** ${highlight.note?.trim() ?? ""}`, "");
     if (link) lines.push(link, "");
     lines.push(entryMetadata(highlight, kind === "notes" ? highlight.noteUpdatedAt ?? highlight.createdAt : highlight.createdAt), "", "---", "");
@@ -122,12 +122,12 @@ function renderCompactEntries(
   highlights: ReaderHighlight[],
   options: AnnotationRenderOptions,
 ): string {
-  if (!highlights.length) return kind === "notes" ? "_暂无笔记。_" : "_暂无高亮。_";
+  if (!highlights.length) return kind === "notes" ? "_No notes yet._" : "_No highlights yet._";
   return highlights.map((highlight) => {
     const link = sourceLink(highlight, options);
-    const excerpt = singleLine(highlight.text, "（空摘抄）");
-    const lines = [`- **${singleLine(highlight.chapter, "未命名章节")}** — ${excerpt}${link ? ` · ${link}` : ""}`];
-    if (kind === "notes") lines.push(`  - **笔记：** ${singleLine(highlight.note ?? "")}`);
+    const excerpt = singleLine(highlight.text, "(empty excerpt)");
+    const lines = [`- **${singleLine(highlight.chapter, "Untitled chapter")}** — ${excerpt}${link ? ` · ${link}` : ""}`];
+    if (kind === "notes") lines.push(`  - **Note:** ${singleLine(highlight.note ?? "")}`);
     const tags = tagText(highlight);
     if (tags) lines.push(`  - ${tags}`);
     lines.push(`  - ${entryMetadata(highlight, kind === "notes" ? highlight.noteUpdatedAt ?? highlight.createdAt : highlight.createdAt)}`);
@@ -140,11 +140,11 @@ function renderCalloutEntries(
   highlights: ReaderHighlight[],
   options: AnnotationRenderOptions,
 ): string {
-  if (!highlights.length) return kind === "notes" ? "_暂无笔记。_" : "_暂无高亮。_";
+  if (!highlights.length) return kind === "notes" ? "_No notes yet._" : "_No highlights yet._";
   return highlights.map((highlight) => {
-    const lines = [`> [!quote] ${singleLine(highlight.chapter, "未命名章节")}`];
+    const lines = [`> [!quote] ${singleLine(highlight.chapter, "Untitled chapter")}`];
     for (const line of highlight.text.replace(/\r\n?/g, "\n").split("\n")) lines.push(`> ${line}`);
-    if (kind === "notes") lines.push(">", `> **笔记：** ${highlight.note?.trim() ?? ""}`);
+    if (kind === "notes") lines.push(">", `> **Note:** ${highlight.note?.trim() ?? ""}`);
     const details = [sourceLink(highlight, options), tagText(highlight)].filter(Boolean).join(" · ");
     if (details) lines.push(">", `> ${details}`);
     lines.push(">", `> ${entryMetadata(highlight, kind === "notes" ? highlight.noteUpdatedAt ?? highlight.createdAt : highlight.createdAt)}`);
@@ -182,7 +182,7 @@ function renderDocument(
   const builtIn = [
     `# ${documentTitle}`,
     "",
-    `## ${singleLine(title, "未命名书籍")}`,
+    `## ${singleLine(title, "Untitled book")}`,
     ...(normalizedAuthor ? ["", `*${normalizedAuthor}*`] : []),
     "",
     entries,
@@ -191,7 +191,7 @@ function renderDocument(
   return applyDocumentTemplate(options.customTemplate, {
     "document.title": documentTitle,
     "document.kind": kind,
-    "book.title": singleLine(title, "未命名书籍"),
+    "book.title": singleLine(title, "Untitled book"),
     "book.author": normalizedAuthor,
     "book.filePath": normalizePath(options.sourcePath ?? ""),
     "export.date": dateStamp(options.exportedAt ?? Date.now()),
@@ -235,11 +235,11 @@ export function mergeManagedDocument(existing: string, kind: AnnotationDocumentK
   const endIndex = startIndex >= 0 ? existing.indexOf(end, startIndex + start.length) : -1;
   const orphanEndIndex = existing.indexOf(end);
   if ((startIndex >= 0 && endIndex < 0) || (startIndex < 0 && orphanEndIndex >= 0)) {
-    throw new Error(`标注文档中的 ${kind} 受控区块标记不完整，请修复或移除标记后重试`);
+    throw new Error(`The ${kind} managed-block markers in the annotation document are incomplete. Fix or remove the markers and try again.`);
   }
   if (startIndex >= 0 && endIndex >= 0) {
     if (existing.indexOf(start, startIndex + start.length) >= 0 || existing.indexOf(end, endIndex + end.length) >= 0) {
-      throw new Error(`标注文档中存在多个 ${kind} 受控区块，请只保留一组标记`);
+      throw new Error(`The annotation document contains more than one ${kind} managed block. Keep only one pair of markers.`);
     }
     const merged = `${existing.slice(0, startIndex)}${block}${existing.slice(endIndex + end.length)}`;
     return merged.endsWith("\n") ? merged : `${merged}\n`;
@@ -321,12 +321,12 @@ export class AnnotationDocumentService {
 
   private async loadCustomTemplate(path: string | undefined, documents: AnnotationDocuments): Promise<string> {
     const normalized = normalizePath(path?.trim() ?? "");
-    if (!normalized) throw new Error("尚未设置自定义导出模板路径");
+    if (!normalized) throw new Error("No custom export template path is set.");
     if (normalized === documents.highlightPath || normalized === documents.notePath) {
-      throw new Error("自定义模板不能使用当前书籍的导出文档");
+      throw new Error("The custom template cannot be one of this book's export documents.");
     }
     const file = this.vault.getAbstractFileByPath(normalized);
-    if (!isFile(file) || file.extension.toLowerCase() !== "md") throw new Error(`找不到自定义导出模板：${normalized}`);
+    if (!isFile(file) || file.extension.toLowerCase() !== "md") throw new Error(`Custom export template not found: ${normalized}`);
     return this.vault.cachedRead(file);
   }
 
@@ -353,7 +353,7 @@ export class AnnotationDocumentService {
     for (const segment of normalizePath(path).split("/")) {
       current = joinPath(current, segment);
       const existing = this.vault.getAbstractFileByPath(current);
-      if (isFile(existing)) throw new Error(`无法创建笔记目录，路径已被文件占用：${current}`);
+      if (isFile(existing)) throw new Error(`Could not create the notes folder because a file already exists at: ${current}`);
       if (!existing) await this.vault.createFolder(current);
     }
   }
@@ -366,7 +366,7 @@ export class AnnotationDocumentService {
       if (next !== current) await this.vault.modify(existing, next);
       return;
     }
-    if (existing) throw new Error(`无法写入标注文档，路径不是文件：${path}`);
+    if (existing) throw new Error(`Could not write the annotation document because the path is not a file: ${path}`);
     await this.vault.create(path, mergeManagedDocument("", kind, generated));
   }
 }

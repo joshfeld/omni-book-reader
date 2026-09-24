@@ -5,13 +5,13 @@ Issue: https://github.com/PavelPeng7/omni-book-reader/issues/7
 
 ## Scope
 
-Make the narrow reader sidebar's 摘录 list prioritize selected text without changing annotation persistence, selection-navigation behavior, filters, exports, or EPUB handling.
+Make the narrow reader sidebar's excerpt list prioritize selected text without changing annotation persistence, selection-navigation behavior, filters, exports, or EPUB handling.
 
 ## Acceptance criteria
 
-- Long 摘录 text is bounded to four readable lines without horizontal overflow.
+- Long excerpt text is bounded to four readable lines without horizontal overflow.
 - A list entry retains one edit action; deletion stays available in the edit flow.
-- Clicking a 摘录 continues to navigate to its saved original location.
+- Clicking a excerpt continues to navigate to its saved original location.
 - Existing annotation filters, sorting, tags, notes, stale indication, and export actions remain available.
 
 ## Test seam
@@ -20,7 +20,7 @@ Extend the existing reader-sidebar CSS contract test. It observes the stable ren
 
 ## Steps
 
-1. Add a failing CSS-contract regression for four-line 摘录 text and overflow protection.
+1. Add a failing CSS-contract regression for four-line excerpt text and overflow protection.
 2. Make the minimum list presentation and action changes to satisfy the regression.
 3. Run focused tests and type-checking; inspect the final diff against Issue #7.
 4. Run full verification, record the result, complete the execution record, and commit the scoped changes.
@@ -32,7 +32,7 @@ Extend the existing reader-sidebar CSS contract test. It observes the stable ren
 
 ## Validation log
 
-- 2026-09-19: `npx vitest run tests/mobile-sidebar-styles.test.ts` passed (3 tests) after the initial four-line 摘录 regression failed as expected.
+- 2026-09-19: `npx vitest run tests/mobile-sidebar-styles.test.ts` passed (3 tests) after the initial four-line excerpt regression failed as expected.
 - 2026-09-19: `npm run check` and `npm run lint` passed.
 - 2026-09-19: `npm test` passed (21 test files, 68 tests; 1 existing fixture skipped).
 - 2026-09-19: `npm run build` and `npm run validate:release` passed; release 0.9.5 artifacts validated.

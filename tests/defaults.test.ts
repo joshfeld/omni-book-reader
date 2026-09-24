@@ -12,7 +12,6 @@ describe("reader settings", () => {
 
   it("normalizes enum values and clamps numeric settings", () => {
     expect(normalizeSettings({
-      interfaceLanguage: "invalid",
       theme: "invalid",
       layout: "scrolled",
       font: "sans",
@@ -34,14 +33,13 @@ describe("reader settings", () => {
       pageMargin: 0,
     });
     expect(normalizeSettings({
-      interfaceLanguage: "en",
       tapToTurnPages: false,
       exportTemplate: "custom",
-      customExportTemplatePath: "模板\\EPUB 导出.md",
-    })).toMatchObject({ interfaceLanguage: "en", tapToTurnPages: false, exportTemplate: "custom" });
+      customExportTemplatePath: "Templates\\EPUB export.md",
+    })).toMatchObject({ tapToTurnPages: false, exportTemplate: "custom" });
     expect(normalizeSettings({
       exportTemplate: "callout",
-      customExportTemplatePath: "模板\\EPUB 导出.md",
-    }).customExportTemplatePath).toBe("模板/EPUB 导出.md");
+      customExportTemplatePath: "Templates\\EPUB export.md",
+    }).customExportTemplatePath).toBe("Templates/EPUB export.md");
   });
 });

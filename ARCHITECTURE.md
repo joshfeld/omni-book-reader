@@ -20,7 +20,7 @@ The plugin does not require a backend service. EPUB content, reading state, anno
 | Layout and appearance | `src/reader-layout.ts`, `src/reader-style.ts`, `src/settings-ui.ts`, `styles.css` | Reader layout, publication CSS, user settings, and the plugin design system |
 | State | `src/store.ts`, `src/defaults.ts`, `src/types.ts`, `src/legacy-plugin-data.ts` | Schema, normalization, persistence, defaults, and migration from earlier plugin directories |
 | Exports | `src/annotation-documents.ts`, `src/chapter-export.ts`, `src/media-utils.ts` | Managed Markdown documents, chapter exports, images, filenames, and Vault writes |
-| Utilities | `src/i18n.ts`, `src/search-session.ts`, `src/utils.ts` | Localization, stale-search protection, identifiers, paths, and shared guards |
+| Utilities | `src/search-session.ts`, `src/utils.ts` | Stale-search protection, identifiers, paths, and shared guards |
 
 Keep modules focused. `main.ts` coordinates Obsidian integration; it should not absorb reader or persistence implementation. `reader-view.ts` is currently the largest integration surface, so new independently testable behavior should normally live in a focused module and be called from the view.
 

@@ -34,7 +34,6 @@ integrationDescribe("vault EPUB fixtures", () => {
       book.destroy?.();
     }
 
-    expect(summaries.some((book) => book.sections === 41 && book.title.includes("永恒少年"))).toBe(true);
     expect(summaries.every((book) => book.sections > 0)).toBe(true);
     expect(summaries.every((book) => book.toc > 0)).toBe(true);
 

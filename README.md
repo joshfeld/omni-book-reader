@@ -2,7 +2,7 @@
 
 An all-in-one, local-first EPUB 2/3 reading workbench for Obsidian. It supports paginated and scrolled reading, nested tables of contents, full-book search, reading-position restore, bookmarks, color highlights, and notes attached to highlights.
 
-The default reading typography follows Obsidian's configured text font and font size, then applies a Chinese long-form reading rhythm: 1.7 line height, 0.01em letter spacing, 0.65em paragraph spacing, a 720px text measure, and 48px page margins. Publisher, Chinese serif, and Chinese sans-serif font modes remain available. The typography panel also includes a one-click comfortable-default reset.
+The default reading typography follows Obsidian's configured text font and font size, then applies a comfortable long-form reading rhythm: 1.7 line height, 0.01em letter spacing, 0.65em paragraph spacing, a 720px text measure, and 48px page margins. Publisher, serif, and sans-serif font modes remain available. The typography panel also includes a one-click comfortable-default reset.
 
 The plugin shell uses a Botanical / Organic Serif design system: warm alabaster paper, deep forest text, sage and terracotta accents, editorial serif headings, soft clay cards, pill controls, diffused elevation, and a scoped paper-grain texture. A matching dark botanical palette, reduced-motion behavior, keyboard focus rings, and mobile drawer layout are included. The design remains local-first and does not download web fonts or other interface assets.
 
