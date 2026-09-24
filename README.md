@@ -21,6 +21,14 @@ Additional reading tools:
 - Recent Reading is available from the ribbon and command palette for quickly continuing a book without a full bookshelf.
 - Focus Paragraph mode dims surrounding text and supports previous/next paragraph navigation with buttons or Arrow Up/Down. Escape exits the mode.
 
+## Syncing across devices
+
+Reading position, highlights, notes, bookmarks, reading time, and finished state sync between devices that share the vault. Each device writes its own file to `Omni Book Reader/Sync/` (configurable in settings), and the plugin merges the other devices' files as they arrive. Edits made on several devices before they sync are combined rather than overwritten, and deletions carry over. If a book is open when a newer position arrives from another device, the reader moves there.
+
+With Obsidian Sync, turn on **Sync all other types** in Obsidian Sync's settings so the `.json` sync files are included. Any other file sync service works too. Display settings stay per device. Use **Omni Book Reader: Sync reading data now** from the command palette to force a sync.
+
+## Markdown exports
+
 Generated Markdown is written only between `omni-book-reader` managed-block comments, so content written outside that block is preserved. Unchanged exports are not rewritten. The settings page offers Classic, Compact, and Obsidian Callout presets. A custom Vault Markdown template can use these variables:
 
 - `{{document.title}}`, `{{document.kind}}`

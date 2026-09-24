@@ -25,6 +25,8 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   connectAdjacentHighlights: true,
   interfaceDensity: "comfortable",
   hasSeenReaderTutorial: false,
+  syncEnabled: true,
+  syncFolder: "Omni Book Reader/Sync",
 };
 
 const themes = new Set(["auto", "light", "dark", "sepia"]);
@@ -91,7 +93,19 @@ export function normalizeSettings(value: unknown): ReaderSettings {
       ? input.interfaceDensity as ReaderSettings["interfaceDensity"] : DEFAULT_SETTINGS.interfaceDensity,
     hasSeenReaderTutorial: typeof input.hasSeenReaderTutorial === "boolean"
       ? input.hasSeenReaderTutorial : DEFAULT_SETTINGS.hasSeenReaderTutorial,
+    syncEnabled: typeof input.syncEnabled === "boolean" ? input.syncEnabled : DEFAULT_SETTINGS.syncEnabled,
+    syncFolder: normalizeSyncFolder(input.syncFolder),
   };
+}
+
+function normalizeSyncFolder(value: unknown): string {
+  if (typeof value !== "string") return DEFAULT_SETTINGS.syncFolder;
+  const folder = value.replace(/\\/g, "/").split("/").map((part) => part.trim()).filter(Boolean).join("/").slice(0, 500);
+  // Obsidian Sync skips dot-folders, and absolute or parent paths would escape the vault.
+  if (!folder || /^[A-Za-z]:/.test(folder) || folder.split("/").some((part) => part.startsWith("."))) {
+    return DEFAULT_SETTINGS.syncFolder;
+  }
+  return folder;
 }
 
 export function createDefaultData(): ReaderData {

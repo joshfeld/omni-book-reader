@@ -3,6 +3,8 @@ import { AnnotationDocumentService, type AnnotationDocumentInput } from "./annot
 import { OMNI_BOOK_READER_BOOKSHELF_VIEW_TYPE, OmniBookReaderBookshelfView } from "./bookshelf-view";
 import { loadLegacyPluginData } from "./legacy-plugin-data";
 import { OMNI_BOOK_READER_VIEW_TYPE, OmniBookReaderView } from "./reader-view";
+import { ReadingSyncService } from "./reading-sync";
+import type { AppliedBookChange } from "./reading-sync-model";
 import { OmniBookReaderSettingTab } from "./settings-ui";
 import { ReaderDataStore } from "./store";
 import type { ReaderSettings } from "./types";
@@ -56,6 +58,8 @@ class RecentReadingModal extends Modal {
 export default class OmniBookReaderPlugin extends Plugin {
   store!: ReaderDataStore;
   private annotationDocuments!: AnnotationDocumentService;
+  private readingSync!: ReadingSyncService;
+  private syncRestartTimer: number | null = null;
 
   async onload(): Promise<void> {
     this.store = new ReaderDataStore(this, (error) => {
@@ -216,8 +220,24 @@ export default class OmniBookReaderPlugin extends Plugin {
     this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
       if (file instanceof TFile && file.extension.toLowerCase() === "epub") {
         this.store.renameBook(oldPath, file.path);
+        this.readingSync.handleBookRename(oldPath, file.path);
       }
     }));
+
+    this.readingSync = new ReadingSyncService(this);
+    this.registerEvent(this.app.vault.on("create", (file) => this.readingSync.handleVaultChange(file)));
+    this.registerEvent(this.app.vault.on("modify", (file) => this.readingSync.handleVaultChange(file)));
+    // Mobile apps can be suspended or killed after backgrounding, so write pending progress right away.
+    this.registerDomEvent(document, "visibilitychange", () => {
+      if (document.visibilityState !== "hidden") return;
+      void this.store.flush();
+      void this.readingSync.flush();
+    });
+    this.app.workspace.onLayoutReady(() => void this.readingSync.start());
+    this.addUiCommand({
+      id: "sync-reading-data",
+      callback: () => void this.syncReadingDataNow(),
+    }, "Omni Book Reader: Sync reading data now");
 
     this.registerEvent(this.app.workspace.on("file-menu", (menu: Menu, file) => {
       if (!(file instanceof TFile) || file.extension.toLowerCase() !== "epub") return;
@@ -243,6 +263,8 @@ export default class OmniBookReaderPlugin extends Plugin {
   }
 
   onunload(): void {
+    if (this.syncRestartTimer !== null) window.clearTimeout(this.syncRestartTimer);
+    void this.readingSync?.flush().finally(() => this.readingSync.stop());
     void this.store?.flush();
     void this.annotationDocuments?.flush();
   }
@@ -256,7 +278,10 @@ export default class OmniBookReaderPlugin extends Plugin {
   }
 
   updateReaderSettings(patch: Partial<ReaderSettings>): void {
+    const syncChanged = (patch.syncEnabled !== undefined && patch.syncEnabled !== this.store.settings.syncEnabled)
+      || (patch.syncFolder !== undefined && patch.syncFolder !== this.store.settings.syncFolder);
     this.store.updateSettings(patch);
+    if (syncChanged) this.scheduleSyncRestart();
     const bookshelfChanged = patch.bookshelfDisplayMode !== undefined
       || patch.bookshelfFilter !== undefined || patch.bookshelfSort !== undefined;
     if (bookshelfChanged) {
@@ -293,6 +318,36 @@ export default class OmniBookReaderPlugin extends Plugin {
       await leaf.setViewState({ type: OMNI_BOOK_READER_BOOKSHELF_VIEW_TYPE, active: true });
     }
     await this.app.workspace.revealLeaf(leaf);
+  }
+
+  onSyncedBookChanges(changes: AppliedBookChange[]): void {
+    const byPath = new Map(changes.map((change) => [change.path, change]));
+    for (const leaf of this.app.workspace.getLeavesOfType(OMNI_BOOK_READER_VIEW_TYPE)) {
+      const view = leaf.view;
+      if (!(view instanceof OmniBookReaderView) || !view.file) continue;
+      const change = byPath.get(view.file.path);
+      if (change) view.applySyncedChanges(change);
+    }
+    this.refreshBookshelves();
+  }
+
+  private scheduleSyncRestart(): void {
+    // The folder is edited in a text field, so wait until typing pauses before restarting.
+    if (this.syncRestartTimer !== null) window.clearTimeout(this.syncRestartTimer);
+    this.syncRestartTimer = window.setTimeout(() => {
+      this.syncRestartTimer = null;
+      void this.readingSync.flush().then(() => this.readingSync.start());
+    }, 1000);
+  }
+
+  private async syncReadingDataNow(): Promise<void> {
+    if (!this.store.settings.syncEnabled) {
+      new Notice("Reading sync is turned off in Omni Book Reader settings.");
+      return;
+    }
+    await this.readingSync.flush();
+    await this.readingSync.start();
+    new Notice("Reading data synced with other devices.");
   }
 
   private refreshBookshelves(): void {

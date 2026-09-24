@@ -37,6 +37,8 @@ export interface ReaderSettings {
   connectAdjacentHighlights: boolean;
   interfaceDensity: InterfaceDensity;
   hasSeenReaderTutorial: boolean;
+  syncEnabled: boolean;
+  syncFolder: string;
 }
 
 export interface SourceSignature {

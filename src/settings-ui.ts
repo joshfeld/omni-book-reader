@@ -1,6 +1,11 @@
 import { App, Modal, Plugin, PluginSettingTab, Setting } from "obsidian";
 import type { SettingDefinitionItem } from "obsidian";
+import { DEFAULT_SETTINGS } from "./defaults";
 import type { ReaderSettings } from "./types";
+
+const SYNC_DESCRIPTION = "Keep reading progress, highlights, notes, bookmarks, and reading time in sync between your devices. "
+  + "Each device writes its own file in the sync folder. With Obsidian Sync, turn on \"Sync all other types\" so these .json files are included.";
+const SYNC_FOLDER_DESCRIPTION = "Vault folder for the per-device sync files. Use the same folder on every device.";
 
 export interface SettingsHost {
   app: App;
@@ -430,6 +435,23 @@ export class OmniBookReaderSettingTab extends PluginSettingTab {
           },
         ],
       },
+      {
+        type: "group",
+        heading: "Sync across devices",
+        cls: "omni-book-reader-settings-page",
+        items: [
+          {
+            name: "Sync reading data",
+            desc: SYNC_DESCRIPTION,
+            control: { type: "toggle", key: "syncEnabled" },
+          },
+          {
+            name: "Sync folder",
+            desc: SYNC_FOLDER_DESCRIPTION,
+            control: { type: "text", key: "syncFolder", placeholder: DEFAULT_SETTINGS.syncFolder },
+          },
+        ],
+      },
     ];
   }
 
@@ -453,6 +475,8 @@ export class OmniBookReaderSettingTab extends PluginSettingTab {
       case "pageMargin": return settings.pageMargin;
       case "exportTemplate": return settings.exportTemplate;
       case "customExportTemplatePath": return settings.customExportTemplatePath;
+      case "syncEnabled": return settings.syncEnabled;
+      case "syncFolder": return settings.syncFolder;
       default: return undefined;
     }
   }
@@ -509,6 +533,12 @@ export class OmniBookReaderSettingTab extends PluginSettingTab {
         return;
       case "customExportTemplatePath":
         if (typeof value === "string") this.host.updateReaderSettings({ customExportTemplatePath: value });
+        return;
+      case "syncEnabled":
+        if (typeof value === "boolean") this.host.updateReaderSettings({ syncEnabled: value });
+        return;
+      case "syncFolder":
+        if (typeof value === "string") this.host.updateReaderSettings({ syncFolder: value });
     }
   }
 
@@ -521,5 +551,19 @@ export class OmniBookReaderSettingTab extends PluginSettingTab {
     this.containerEl.addClass("omni-book-reader-settings-page");
     new Setting(this.containerEl).setName("Reading").setHeading();
     renderSettings(this.containerEl, this.host, false);
+    new Setting(this.containerEl).setName("Sync across devices").setHeading();
+    new Setting(this.containerEl)
+      .setName("Sync reading data")
+      .setDesc(SYNC_DESCRIPTION)
+      .addToggle((toggle) => toggle
+        .setValue(this.host.getReaderSettings().syncEnabled)
+        .onChange((syncEnabled) => this.host.updateReaderSettings({ syncEnabled })));
+    new Setting(this.containerEl)
+      .setName("Sync folder")
+      .setDesc(SYNC_FOLDER_DESCRIPTION)
+      .addText((text) => text
+        .setPlaceholder(DEFAULT_SETTINGS.syncFolder)
+        .setValue(this.host.getReaderSettings().syncFolder)
+        .onChange((syncFolder) => this.host.updateReaderSettings({ syncFolder })));
   }
 }

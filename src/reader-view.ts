@@ -61,9 +61,11 @@ import type {
   HighlightColor,
   HighlightStyle,
   ReaderHighlight,
+  ReadingPosition,
   ReadingStats,
   ReaderSettings,
 } from "./types";
+import type { AppliedBookChange } from "./reading-sync-model";
 import {
   createId,
   excerptToText,
@@ -462,6 +464,8 @@ export class OmniBookReaderView extends FileView {
   private searchTimer: number | null = null;
   private selectionClearTimer: number | null = null;
   private progressTimer: number | null = null;
+  /** Position received from another device; the next save keeps its timestamp so devices do not echo it back as newer. */
+  private syncedPosition: { position: ReadingPosition; until: number } | null = null;
   private statsTimer: number | null = null;
   private statsLastTick = 0;
   private statsLastActivity = 0;
@@ -647,6 +651,38 @@ export class OmniBookReaderView extends FileView {
       return;
     }
     await this.reader.select(cfi);
+  }
+
+  /** Reflects highlights, bookmarks, stats, and position that arrived from another device. */
+  applySyncedChanges(change: AppliedBookChange): void {
+    const reader = this.reader;
+    if (!reader || !this.bookState || this.file?.path !== change.path) return;
+    if (change.removedHighlights.length || change.addedHighlights.length) {
+      void (async () => {
+        for (const highlight of change.removedHighlights) {
+          await reader.deleteAnnotation({ value: highlight.cfi }).catch(() => undefined);
+        }
+        for (const highlight of change.addedHighlights) {
+          if (!highlight.stale) await reader.addAnnotation(annotationFor(highlight)).catch(() => undefined);
+        }
+      })();
+      this.renderHighlights();
+    }
+    if (change.bookmarksChanged) {
+      this.renderBookmarks();
+      this.updateBookmarkButton();
+    }
+    if (change.statsChanged) this.updateReadingStatsText();
+    const position = this.bookState.position;
+    if (change.positionChanged && position && position.cfi !== this.currentLocation.cfi && !this.pendingSelection
+      && reader.resolveNavigation(position.cfi)) {
+      this.syncedPosition = { position: { ...position }, until: Date.now() + 3000 };
+      void Promise.resolve(reader.goTo(position.cfi)).then(() => {
+        this.showLocalStatus("Moved to your latest reading position from another device");
+      }).catch(() => {
+        this.syncedPosition = null;
+      });
+    }
   }
 
   private buildShell(): void {
@@ -2225,10 +2261,12 @@ export class OmniBookReaderView extends FileView {
 
   private saveCurrentPosition(): void {
     if (!this.bookState || !this.currentLocation.cfi) return;
+    const synced = this.syncedPosition && Date.now() <= this.syncedPosition.until ? this.syncedPosition.position : null;
+    this.syncedPosition = null;
     this.bookState.position = {
       cfi: this.currentLocation.cfi,
       fraction: this.currentLocation.fraction ?? 0,
-      updatedAt: Date.now(),
+      updatedAt: synced?.updatedAt ?? Date.now(),
     };
     this.plugin.store.markChanged(0);
   }
